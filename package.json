@@ -12,51 +12,29 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
-    },
-    "./core": {
-      "import": "./dist/core/index.js",
-      "require": "./dist/core/index.cjs",
-      "types": "./dist/core/index.d.ts"
-    },
-    "./response": {
-      "import": "./dist/response/index.js",
-      "require": "./dist/response/index.cjs",
-      "types": "./dist/response/index.d.ts"
-    },
-    "./logger": {
-      "import": "./dist/logger/index.js",
-      "require": "./dist/logger/index.cjs",
-      "types": "./dist/logger/index.d.ts"
-    },
-    "./redis": {
-      "import": "./dist/redis/index.js",
-      "require": "./dist/redis/index.cjs",
-      "types": "./dist/redis/index.d.ts"
-    },
-    "./database": {
-      "import": "./dist/database/index.js",
-      "require": "./dist/database/index.cjs",
-      "types": "./dist/database/index.d.ts"
-    },
-    "./http": {
-      "import": "./dist/http/index.js",
-      "require": "./dist/http/index.cjs",
-      "types": "./dist/http/index.d.ts"
-    },
-    "./events": {
-      "import": "./dist/events/index.js",
-      "require": "./dist/events/index.cjs",
-      "types": "./dist/events/index.d.ts"
-    },
-    "./metrics": {
-      "import": "./dist/metrics/index.js",
-      "require": "./dist/metrics/index.cjs",
-      "types": "./dist/metrics/index.d.ts"
-    }
+    ".":                  { "types": "./dist/index.d.ts",                  "import": "./dist/index.js",                  "require": "./dist/index.cjs" },
+    "./core":             { "types": "./dist/core/index.d.ts",             "import": "./dist/core/index.js",             "require": "./dist/core/index.cjs" },
+    "./response":         { "types": "./dist/response/index.d.ts",         "import": "./dist/response/index.js",         "require": "./dist/response/index.cjs" },
+    "./response/nestjs":  { "types": "./dist/response/nestjs/index.d.ts",  "import": "./dist/response/nestjs/index.js",  "require": "./dist/response/nestjs/index.cjs" },
+    "./response/fastify": { "types": "./dist/response/fastify/index.d.ts", "import": "./dist/response/fastify/index.js", "require": "./dist/response/fastify/index.cjs" },
+    "./logger":           { "types": "./dist/logger/index.d.ts",           "import": "./dist/logger/index.js",           "require": "./dist/logger/index.cjs" },
+    "./logger/nestjs":    { "types": "./dist/logger/nestjs/index.d.ts",    "import": "./dist/logger/nestjs/index.js",    "require": "./dist/logger/nestjs/index.cjs" },
+    "./logger/fastify":   { "types": "./dist/logger/fastify/index.d.ts",   "import": "./dist/logger/fastify/index.js",   "require": "./dist/logger/fastify/index.cjs" },
+    "./redis":            { "types": "./dist/redis/index.d.ts",            "import": "./dist/redis/index.js",            "require": "./dist/redis/index.cjs" },
+    "./redis/nestjs":     { "types": "./dist/redis/nestjs/index.d.ts",     "import": "./dist/redis/nestjs/index.js",     "require": "./dist/redis/nestjs/index.cjs" },
+    "./redis/fastify":    { "types": "./dist/redis/fastify/index.d.ts",    "import": "./dist/redis/fastify/index.js",    "require": "./dist/redis/fastify/index.cjs" },
+    "./database":         { "types": "./dist/database/index.d.ts",         "import": "./dist/database/index.js",         "require": "./dist/database/index.cjs" },
+    "./database/nestjs":  { "types": "./dist/database/nestjs/index.d.ts",  "import": "./dist/database/nestjs/index.js",  "require": "./dist/database/nestjs/index.cjs" },
+    "./database/fastify": { "types": "./dist/database/fastify/index.d.ts", "import": "./dist/database/fastify/index.js", "require": "./dist/database/fastify/index.cjs" },
+    "./http":             { "types": "./dist/http/index.d.ts",             "import": "./dist/http/index.js",             "require": "./dist/http/index.cjs" },
+    "./http/nestjs":      { "types": "./dist/http/nestjs/index.d.ts",      "import": "./dist/http/nestjs/index.js",      "require": "./dist/http/nestjs/index.cjs" },
+    "./http/fastify":     { "types": "./dist/http/fastify/index.d.ts",     "import": "./dist/http/fastify/index.js",     "require": "./dist/http/fastify/index.cjs" },
+    "./events":           { "types": "./dist/events/index.d.ts",           "import": "./dist/events/index.js",           "require": "./dist/events/index.cjs" },
+    "./events/nestjs":    { "types": "./dist/events/nestjs/index.d.ts",    "import": "./dist/events/nestjs/index.js",    "require": "./dist/events/nestjs/index.cjs" },
+    "./events/fastify":   { "types": "./dist/events/fastify/index.d.ts",   "import": "./dist/events/fastify/index.js",   "require": "./dist/events/fastify/index.cjs" },
+    "./metrics":          { "types": "./dist/metrics/index.d.ts",          "import": "./dist/metrics/index.js",          "require": "./dist/metrics/index.cjs" },
+    "./metrics/nestjs":   { "types": "./dist/metrics/nestjs/index.d.ts",   "import": "./dist/metrics/nestjs/index.js",   "require": "./dist/metrics/nestjs/index.cjs" },
+    "./metrics/fastify":  { "types": "./dist/metrics/fastify/index.d.ts",  "import": "./dist/metrics/fastify/index.js",  "require": "./dist/metrics/fastify/index.cjs" }
   },
   "files": [
     "dist",
@@ -79,6 +57,7 @@
     "axios": "^1.7.0",
     "eventemitter2": "^6.4.9",
     "pino": "^9.4.0",
+    "pino-pretty": "^11.0.0",
     "prom-client": "^15.1.3"
   },
   "peerDependencies": {

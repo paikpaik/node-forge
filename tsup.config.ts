@@ -1,16 +1,22 @@
 import { defineConfig } from 'tsup'
 
+const modules = ['response', 'logger', 'redis', 'database', 'http', 'events', 'metrics']
+
+const frameworkEntries = modules.reduce(
+  (acc, mod) => ({
+    ...acc,
+    [`${mod}/nestjs/index`]: `src/${mod}/nestjs/index.ts`,
+    [`${mod}/fastify/index`]: `src/${mod}/fastify/index.ts`,
+  }),
+  {} as Record<string, string>,
+)
+
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
     'core/index': 'src/core/index.ts',
-    'response/index': 'src/response/index.ts',
-    'logger/index': 'src/logger/index.ts',
-    'redis/index': 'src/redis/index.ts',
-    'database/index': 'src/database/index.ts',
-    'http/index': 'src/http/index.ts',
-    'events/index': 'src/events/index.ts',
-    'metrics/index': 'src/metrics/index.ts',
+    ...modules.reduce((acc, mod) => ({ ...acc, [`${mod}/index`]: `src/${mod}/index.ts` }), {}),
+    ...frameworkEntries,
   },
   format: ['cjs', 'esm'],
   dts: true,
@@ -18,7 +24,6 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   external: [
-    // peerDependencies — 번들에 포함하지 않음
     '@nestjs/common',
     '@nestjs/core',
     'fastify',
