@@ -1,5 +1,52 @@
 # node-forge-initial-setup — Node.js 공통 모듈 패키지 초기 설계 및 셋업
 
+## 플랜 실행 이력
+
+### 완료: 2026-06-06
+
+**결과**: 성공
+
+**실제 변경 파일**:
+- `package.json` — `@paikpaik/node-forge` 패키지 메타, exports 맵(24개 서브패스), peerDeps, scripts 완성
+- `.npmrc` — `@paikpaik:registry=https://npm.pkg.github.com` 설정
+- `tsconfig.json` — strict, decorators, emitDecoratorMetadata, moduleResolution Bundler
+- `tsup.config.ts` — 8개 모듈 × 3 entry(core/nestjs/fastify) 동적 생성, dual output
+- `vitest.config.ts` — 테스트 환경 구성
+- `src/core/types.ts` — ErrorCode enum (E94xx/E95xx), RequestContext, PaginationMeta
+- `src/core/errors.ts` — ForgeError, ForgeHttpError, ForgeBizError 계층
+- `src/core/utils.ts` — omit, pick, deepMerge 유틸
+- `src/response/response.ts` — ApiResponse<T>, ok/fail/paginated 빌더
+- `src/response/nestjs/response.interceptor.ts` — NestJS ResponseInterceptor
+- `src/response/fastify/response.plugin.ts` — Fastify reply.ok/fail/paginated 데코레이터
+- `src/logger/logger.ts` — ForgeLogger (pino), createLogger 팩토리
+- `src/logger/nestjs/logger.module.ts` — NestJS LoggerModule.forRoot/forRootAsync
+- `src/logger/fastify/logger.plugin.ts` — Fastify fastifyLogger plugin (v5 getter 패턴)
+- `src/redis/redis.ts` — ForgeRedisClient (ioredis), lazyConnect, ping
+- `src/redis/nestjs/redis.module.ts` — NestJS RedisModule, @InjectRedis()
+- `src/redis/fastify/redis.plugin.ts` — Fastify fastifyRedis plugin
+- `src/database/database.ts` — createDataSource, runMigrations (TypeORM)
+- `src/database/nestjs/database.module.ts` — NestJS DatabaseModule
+- `src/http/http.ts` — ForgeHttpClient (axios), retry interceptor, logger 연동
+- `src/http/nestjs/http.module.ts` — NestJS HttpModule, @InjectHttpClient()
+- `src/events/events.ts` — ForgeEventBus (EventEmitter2), wildcard 지원
+- `src/events/nestjs/events.module.ts` — NestJS EventsModule, @OnEvent() auto-register
+- `src/metrics/metrics.ts` — ForgeMetrics (prom-client), 격리된 Registry
+- `src/metrics/nestjs/metrics.module.ts` — NestJS MetricsModule, /metrics 엔드포인트
+- `src/metrics/fastify/metrics.plugin.ts` — Fastify fastifyMetrics plugin
+- `.claude/CLAUDE.md` — 레포 구조, 모듈 추가 방법, 퍼블리시 방법 정리
+- `.github/workflows/publish.yml` — tag push 시 GitHub Packages 자동 퍼블리시
+
+**계획과의 차이**:
+- exports 서브패스가 원래 9개에서 24개로 확장됨: 프레임워크 충돌 방지를 위해 `/nestjs`, `/fastify` 서브패스 분리 추가
+- `tsup splitting: false`로 변경 (true 시 서브패스별 청크 분리가 오히려 문제 발생)
+- Fastify v5 `decorateRequest`는 reference 타입에 `{ getter: () => value }` 패턴 필요 (v4와 다름)
+- `package.json exports`에서 `"types"` 조건이 `"import"` 앞에 와야 TypeScript 인식됨
+
+**잔존 작업**:
+없음
+
+---
+
 ## 목표
 
 NestJS와 Fastify 양쪽에서 동일하게 사용할 수 있는 단일 npm 패키지 `@paikpaik/node-forge`를 구축한다.

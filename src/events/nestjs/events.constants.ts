@@ -1,0 +1,2 @@
+export const EVENT_BUS = Symbol('FORGE_EVENT_BUS')
+export const EVENTS_HANDLER_METADATA = 'FORGE_EVENTS_HANDLER'

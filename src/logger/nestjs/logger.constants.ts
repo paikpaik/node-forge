@@ -1,0 +1,1 @@
+export const LOGGER_OPTIONS = Symbol('FORGE_LOGGER_OPTIONS')
