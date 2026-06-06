@@ -1,0 +1,129 @@
+{
+  "name": "@paikpaik/node-forge",
+  "version": "0.1.0",
+  "description": "Common Node.js modules for NestJS and Fastify",
+  "license": "MIT",
+  "author": "paikpaik",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paikpaik/node-forge.git"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/core/index.js",
+      "require": "./dist/core/index.cjs",
+      "types": "./dist/core/index.d.ts"
+    },
+    "./response": {
+      "import": "./dist/response/index.js",
+      "require": "./dist/response/index.cjs",
+      "types": "./dist/response/index.d.ts"
+    },
+    "./logger": {
+      "import": "./dist/logger/index.js",
+      "require": "./dist/logger/index.cjs",
+      "types": "./dist/logger/index.d.ts"
+    },
+    "./redis": {
+      "import": "./dist/redis/index.js",
+      "require": "./dist/redis/index.cjs",
+      "types": "./dist/redis/index.d.ts"
+    },
+    "./database": {
+      "import": "./dist/database/index.js",
+      "require": "./dist/database/index.cjs",
+      "types": "./dist/database/index.d.ts"
+    },
+    "./http": {
+      "import": "./dist/http/index.js",
+      "require": "./dist/http/index.cjs",
+      "types": "./dist/http/index.d.ts"
+    },
+    "./events": {
+      "import": "./dist/events/index.js",
+      "require": "./dist/events/index.cjs",
+      "types": "./dist/events/index.d.ts"
+    },
+    "./metrics": {
+      "import": "./dist/metrics/index.js",
+      "require": "./dist/metrics/index.cjs",
+      "types": "./dist/metrics/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "eventemitter2": "^6.4.9",
+    "pino": "^9.4.0",
+    "prom-client": "^15.1.3"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "fastify": "^4.0.0 || ^5.0.0",
+    "fastify-plugin": "^4.0.0 || ^5.0.0",
+    "ioredis": "^5.0.0",
+    "reflect-metadata": "^0.1.13 || ^0.2.0",
+    "rxjs": "^7.0.0",
+    "typeorm": "^0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": { "optional": true },
+    "@nestjs/core": { "optional": true },
+    "fastify": { "optional": true },
+    "fastify-plugin": { "optional": true },
+    "ioredis": { "optional": true },
+    "reflect-metadata": { "optional": true },
+    "rxjs": { "optional": true },
+    "typeorm": { "optional": true }
+  },
+  "devDependencies": {
+    "@nestjs/common": "^10.4.0",
+    "@nestjs/core": "^10.4.0",
+    "@types/node": "^20.16.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "fastify": "^5.1.0",
+    "fastify-plugin": "^5.0.0",
+    "ioredis": "^5.4.1",
+    "pg": "^8.13.0",
+    "prettier": "^3.3.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "typeorm": "^0.3.20",
+    "tsup": "^8.3.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

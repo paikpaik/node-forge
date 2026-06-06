@@ -1,0 +1,21 @@
+node_modules/
+dist/
+
+# 환경 변수
+.env
+.env.local
+*.env
+
+# 테스트 커버리지
+coverage/
+
+# OS
+.DS_Store
+
+# 로그
+*.log
+npm-debug.log*
+
+# 에디터
+.vscode/
+.idea/
