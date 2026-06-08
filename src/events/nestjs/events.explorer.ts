@@ -3,6 +3,11 @@ import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core'
 import { ForgeEventBus } from '../events'
 import { EVENT_BUS, EVENTS_HANDLER_METADATA } from './events.constants'
 
+/**
+ * @description 애플리케이션 부팅 시점에 모든 프로바이더를 스캔해 `@OnEvent`가 붙은 메서드를
+ * 찾아 `ForgeEventBus`에 자동으로 리스너로 등록한다. 이 덕분에 사용하는 쪽은 `eventBus.on`을
+ * 직접 호출하지 않고 `@OnEvent('...')` 데코레이터만 붙이면 된다 (`EventsModule`에서 자동 등록됨).
+ */
 @Injectable()
 export class EventsExplorer implements OnApplicationBootstrap {
   constructor(

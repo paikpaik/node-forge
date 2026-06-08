@@ -23,6 +23,7 @@ Claude는 작업 시작 전 아래 순서로 규칙서를 읽는다.
 | 2 | `rules/common/principles.md` | DRY, YAGNI, Fail Fast |
 | 3 | `rules/common/patterns.md` | 구조/행위/비동기 패턴 |
 | 4 | `rules/common/workflow.md` | 의도 파악, 플래닝 프로세스 |
+| 5 | `rules/language/korean.md` | 응답 언어(한국어)·톤 가이드 |
 
 ### 상황별 적용
 

@@ -1,6 +1,16 @@
 import { defineConfig } from 'tsup'
 
-const modules = ['response', 'logger', 'redis', 'database', 'http', 'events', 'metrics']
+const modules = [
+  'response',
+  'logger',
+  'redis',
+  'database',
+  'http',
+  'events',
+  'metrics',
+  'versioning',
+  'health',
+]
 
 const frameworkEntries = modules.reduce(
   (acc, mod) => ({

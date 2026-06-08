@@ -3,6 +3,12 @@ import type { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } fr
 import type { HttpOptions } from './http.options'
 import type { ForgeLogger } from '../logger'
 
+/**
+ * @description `axios`를 감싼 HTTP 클라이언트. `options.retries`를 주면 응답 인터셉터로
+ * 지수적이지 않은 고정 지연 재시도를, `options.logger`를 주면 요청/응답/에러를 `ForgeLogger`로
+ * 자동 로깅하는 인터셉터를 등록한다. 모든 verb 메서드(`get`/`post`/...)는 axios의 전체
+ * `AxiosResponse`가 아니라 `response.data`만 반환해 호출부 코드를 단순하게 만든다.
+ */
 export class ForgeHttpClient {
   private readonly client: AxiosInstance
 
@@ -56,6 +62,10 @@ export class ForgeHttpClient {
     )
   }
 
+  /**
+   * @description GET 요청을 보내고 `response.data`를 바로 반환한다 (제네릭 `T`로 응답 바디 타입 지정).
+   * 나머지 verb 메서드(`post`/`put`/`patch`/`delete`)도 동일한 규칙으로 동작한다.
+   */
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.get<T>(url, config)
     return response.data
@@ -81,11 +91,19 @@ export class ForgeHttpClient {
     return response.data
   }
 
+  /**
+   * @description 내부에서 사용하는 원본 `AxiosInstance`에 직접 접근한다. `ForgeHttpClient`가
+   * 제공하지 않는 axios 고유 기능(인터셉터 추가, 파일 업로드 설정 등)이 필요할 때 사용한다.
+   */
   getClient(): AxiosInstance {
     return this.client
   }
 }
 
+/**
+ * @description `ForgeHttpClient`의 함수형 래퍼. `new` 없이 옵션으로 클라이언트를 생성하고
+ * 싶을 때 사용한다 (동작은 `new ForgeHttpClient(options)`와 동일).
+ */
 export function createHttpClient(options?: HttpOptions): ForgeHttpClient {
   return new ForgeHttpClient(options)
 }

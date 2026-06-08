@@ -1,0 +1,1 @@
+export const HEALTH_CHECKERS = Symbol('FORGE_HEALTH_CHECKERS')
