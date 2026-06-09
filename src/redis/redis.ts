@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import Redis from 'ioredis'
-import type { RedisOptions } from './redis.options'
+import type { CacheObserver, RedisOptions } from './redis.options'
 
 const UNLOCK_SCRIPT = `
 if redis.call("GET", KEYS[1]) == ARGV[1] then
@@ -17,10 +17,12 @@ interface CachedItem<T> {
 
 export class ForgeRedisClient {
   private readonly client: Redis
+  private readonly observer?: CacheObserver
   private _subscriber: Redis | null = null
   private readonly _channels = new Map<string, (value: unknown) => void>()
 
   constructor(options: RedisOptions = {}) {
+    this.observer = options.observer
     this.client = new Redis({
       host: options.host ?? 'localhost',
       port: options.port ?? 6379,
@@ -141,8 +143,9 @@ export class ForgeRedisClient {
 
   /**
    * @description 캐시가 있으면 바로 반환하고, 없으면 fetchFn을 호출해 데이터를 가져온 뒤 저장한다.
-   * DB 직접 조회 빈도를 줄이는 표준 cache-aside 패턴이다.
-   * expireSeconds를 지정하면 캐시에 TTL이 적용된다.
+   * DB 직접 조회 빈도를 줄이는 표준 cache-aside 패턴이다. `expireSeconds`를 지정하면
+   * 캐시에 TTL이 적용된다. `observer`가 설정된 경우 hit 시 `onHit`, miss 시 `onMiss`를
+   * 동기적으로 호출하므로 `ForgeMetrics` 카운터를 연결해 히트율을 추적할 수 있다.
    */
   async getOrSet<T>(
     key: string,
@@ -150,7 +153,11 @@ export class ForgeRedisClient {
     expireSeconds?: number,
   ): Promise<T> {
     const cached = await this.get<T>(key)
-    if (cached !== null) return cached
+    if (cached !== null) {
+      this.observer?.onHit()
+      return cached
+    }
+    this.observer?.onMiss()
     const fresh = await fetchFn()
     await this.set(key, fresh, expireSeconds)
     return fresh
@@ -172,7 +179,8 @@ export class ForgeRedisClient {
   /**
    * @description cGet으로 최신 여부를 확인하고, stale이거나 없으면 fetchFn을 호출해 재저장한다.
    * del 없이 비교키 하나만 invalidate()하면 이 메서드를 통해 자동으로 갱신된다.
-   * 엔티티 하나에 연결된 캐시 키가 여러 개일 때 특히 유용하다.
+   * 엔티티 하나에 연결된 캐시 키가 여러 개일 때 특히 유용하다. `getOrSet`과 동일하게
+   * `observer`가 설정된 경우 hit/miss 시 콜백을 동기적으로 호출한다.
    */
   async cGetOrSet<T>(
     key: string,
@@ -181,7 +189,11 @@ export class ForgeRedisClient {
     expireSeconds?: number,
   ): Promise<T> {
     const cached = await this.cGet<T>(key, compareKey)
-    if (cached !== null) return cached
+    if (cached !== null) {
+      this.observer?.onHit()
+      return cached
+    }
+    this.observer?.onMiss()
     const fresh = await fetchFn()
     await this.set(key, fresh, expireSeconds)
     return fresh
