@@ -1,4 +1,5 @@
 import type { RequestContext } from '../core'
+import { buildTraceparent } from '../core'
 
 export interface TraceHeaderNames {
   traceId?: string
@@ -29,4 +30,19 @@ export function buildTraceHeaders(
   }
 
   return headers
+}
+
+/**
+ * @description `RequestContext.traceId`를 W3C `traceparent` 헤더로 변환한다.
+ * `traceId`가 있으면 `{ traceparent: '00-{32hexTraceId}-{16hexSpanId}-01' }`를 반환하고,
+ * 없으면 `{}`를 반환한다. UUID 포맷의 `traceId`는 대시가 자동으로 제거되어 32-char hex로 변환된다.
+ * OTel SDK를 사용하는 경우 active span의 spanId를 전달하면 기존 추적 체인과 연결되며,
+ * 생략하면 랜덤 spanId가 자동 생성된다. `buildTraceHeaders`와 spread로 조합해 두 포맷을 동시에 전송할 수 있다.
+ */
+export function buildTraceparentHeader(
+  context: Partial<Pick<RequestContext, 'traceId'>>,
+  spanId?: string,
+): Record<string, string> {
+  if (!context.traceId) return {}
+  return { traceparent: buildTraceparent(context.traceId, spanId) }
 }
