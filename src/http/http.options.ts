@@ -1,4 +1,5 @@
 import type { ForgeLogger } from '../logger'
+import type { ForgeMetrics } from '../metrics'
 
 export interface HttpOptions {
   baseURL?: string
@@ -7,4 +8,5 @@ export interface HttpOptions {
   retryDelay?: number
   headers?: Record<string, string>
   logger?: ForgeLogger
+  metrics?: ForgeMetrics
 }

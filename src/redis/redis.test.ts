@@ -222,6 +222,25 @@ describe('ForgeRedisClient', () => {
       await client.getOrSet('key', fetchFn, 60)
       expect(mockClient.setex).toHaveBeenCalledWith('key', 60, expect.any(String))
     })
+
+    it('observer가 있고 캐시 hit이면 onHit만 호출한다', async () => {
+      const observer = { onHit: vi.fn(), onMiss: vi.fn() }
+      const clientWithObserver = new ForgeRedisClient({ observer })
+      mockClient.get.mockResolvedValue(JSON.stringify({ cachedAt: 1000, data: 'cached' }))
+      await clientWithObserver.getOrSet('key', vi.fn())
+      expect(observer.onHit).toHaveBeenCalledOnce()
+      expect(observer.onMiss).not.toHaveBeenCalled()
+    })
+
+    it('observer가 있고 캐시 miss이면 onMiss만 호출한다', async () => {
+      const observer = { onHit: vi.fn(), onMiss: vi.fn() }
+      const clientWithObserver = new ForgeRedisClient({ observer })
+      mockClient.get.mockResolvedValue(null)
+      mockClient.set.mockResolvedValue('OK')
+      await clientWithObserver.getOrSet('key', vi.fn().mockResolvedValue('fresh'))
+      expect(observer.onMiss).toHaveBeenCalledOnce()
+      expect(observer.onHit).not.toHaveBeenCalled()
+    })
   })
 
   describe('cGet', () => {
@@ -275,6 +294,31 @@ describe('ForgeRedisClient', () => {
       const fetchFn = vi.fn().mockResolvedValue('new')
       expect(await client.cGetOrSet('key', 'cmp', fetchFn)).toBe('new')
       expect(fetchFn).toHaveBeenCalledOnce()
+    })
+
+    it('observer가 있고 캐시 hit이면 onHit만 호출한다', async () => {
+      const observer = { onHit: vi.fn(), onMiss: vi.fn() }
+      const clientWithObserver = new ForgeRedisClient({ observer })
+      mockClient.mget.mockResolvedValue([
+        JSON.stringify({ cachedAt: 2000, data: 'fresh' }),
+        JSON.stringify({ cachedAt: 1000, data: null }),
+      ])
+      await clientWithObserver.cGetOrSet('key', 'cmp', vi.fn())
+      expect(observer.onHit).toHaveBeenCalledOnce()
+      expect(observer.onMiss).not.toHaveBeenCalled()
+    })
+
+    it('observer가 있고 stale이면 onMiss만 호출한다', async () => {
+      const observer = { onHit: vi.fn(), onMiss: vi.fn() }
+      const clientWithObserver = new ForgeRedisClient({ observer })
+      mockClient.mget.mockResolvedValue([
+        JSON.stringify({ cachedAt: 1000, data: 'old' }),
+        JSON.stringify({ cachedAt: 2000, data: null }),
+      ])
+      mockClient.set.mockResolvedValue('OK')
+      await clientWithObserver.cGetOrSet('key', 'cmp', vi.fn().mockResolvedValue('new'))
+      expect(observer.onMiss).toHaveBeenCalledOnce()
+      expect(observer.onHit).not.toHaveBeenCalled()
     })
   })
 

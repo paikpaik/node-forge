@@ -3,6 +3,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { createLogger } from '../logger'
 import type { ForgeLogger } from '../logger'
 import type { LoggerOptions } from '../logger.options'
+import { parseTraceparent } from '../../core'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -27,8 +28,12 @@ const loggerPlugin: FastifyPluginAsync<LoggerOptions> = async (fastify, options)
   fastify.decorateRequest('forgeLogger', { getter: () => logger })
 
   fastify.addHook('onRequest', (request, _reply, done) => {
-    const traceId = (request.headers['x-trace-id'] as string) ?? crypto.randomUUID()
-    const requestId = (request.headers['x-request-id'] as string) ?? crypto.randomUUID()
+    const rawTraceparent = request.headers['traceparent'] as string | undefined
+    const traceId =
+      (rawTraceparent ? parseTraceparent(rawTraceparent)?.traceId : undefined) ??
+      (request.headers['x-trace-id'] as string | undefined) ??
+      crypto.randomUUID()
+    const requestId = (request.headers['x-request-id'] as string | undefined) ?? crypto.randomUUID()
     request.forgeLogger = logger.withContext({ traceId, requestId, ip: request.ip })
     done()
   })
