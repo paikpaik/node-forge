@@ -2,6 +2,16 @@ import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
 import type { HttpOptions } from './http.options'
 import type { ForgeLogger } from '../logger'
+import type { ForgeMetrics } from '../metrics'
+
+function parseHost(url?: string): string {
+  if (!url) return 'unknown'
+  try {
+    return new URL(url).host
+  } catch {
+    return 'unknown'
+  }
+}
 
 /**
  * @description `axios`를 감싼 HTTP 클라이언트. `options.retries`를 주면 응답 인터셉터로
@@ -27,6 +37,10 @@ export class ForgeHttpClient {
     if (options.logger) {
       this.setupLogging(options.logger)
     }
+
+    if (options.metrics) {
+      this.setupMetrics(options.metrics)
+    }
   }
 
   private setupRetry(retries: number, retryDelay: number): void {
@@ -42,6 +56,52 @@ export class ForgeHttpClient {
 
       return Promise.reject(error)
     })
+  }
+
+  private setupMetrics(metrics: ForgeMetrics): void {
+    const requestsTotal = metrics.counter({
+      name: 'http_outbound_requests_total',
+      help: 'Total number of outbound HTTP requests',
+      labelNames: ['method', 'host', 'status'],
+    })
+    const requestDuration = metrics.histogram({
+      name: 'http_outbound_request_duration_seconds',
+      help: 'Outbound HTTP request duration in seconds',
+      labelNames: ['method', 'host', 'status'],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+    })
+
+    this.client.interceptors.request.use((config) => {
+      (config as InternalAxiosRequestConfig & { _metricsStart?: number })._metricsStart = Date.now()
+      return config
+    })
+
+    this.client.interceptors.response.use(
+      (response) => {
+        const cfg = response.config as InternalAxiosRequestConfig & { _metricsStart?: number }
+        const duration = cfg._metricsStart ? (Date.now() - cfg._metricsStart) / 1000 : 0
+        const labels = {
+          method: cfg.method?.toUpperCase() ?? 'UNKNOWN',
+          host: parseHost(cfg.baseURL ?? cfg.url),
+          status: String(response.status),
+        }
+        requestsTotal.labels(labels).inc()
+        requestDuration.labels(labels).observe(duration)
+        return response
+      },
+      (error) => {
+        const cfg = (error.config ?? {}) as InternalAxiosRequestConfig & { _metricsStart?: number }
+        const duration = cfg._metricsStart ? (Date.now() - cfg._metricsStart) / 1000 : 0
+        const labels = {
+          method: cfg.method?.toUpperCase() ?? 'UNKNOWN',
+          host: parseHost(cfg.baseURL ?? cfg.url),
+          status: String((error.response as { status?: number } | undefined)?.status ?? 0),
+        }
+        requestsTotal.labels(labels).inc()
+        requestDuration.labels(labels).observe(duration)
+        return Promise.reject(error)
+      },
+    )
   }
 
   private setupLogging(logger: ForgeLogger): void {
