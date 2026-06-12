@@ -18,11 +18,14 @@ interface CachedItem<T> {
 export class ForgeRedisClient {
   private readonly client: Redis
   private readonly observer?: CacheObserver
+  private readonly _singleflight: boolean
+  private readonly _inflight = new Map<string, Promise<unknown>>()
   private _subscriber: Redis | null = null
   private readonly _channels = new Map<string, (value: unknown) => void>()
 
   constructor(options: RedisOptions = {}) {
     this.observer = options.observer
+    this._singleflight = options.singleflight ?? false
     this.client = new Redis({
       host: options.host ?? 'localhost',
       port: options.port ?? 6379,
@@ -35,6 +38,21 @@ export class ForgeRedisClient {
       lazyConnect: true,
       ...(options.tls && { tls: {} }),
     })
+  }
+
+  // ── Singleflight ─────────────────────────────────────────────────────────
+
+  private dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    if (!this._singleflight) return fn()
+
+    const existing = this._inflight.get(key)
+    if (existing) return existing as Promise<T>
+
+    const promise = fn().finally(() => {
+      this._inflight.delete(key)
+    })
+    this._inflight.set(key, promise)
+    return promise
   }
 
   // ── Serialization ─────────────────────────────────────────────────────────
@@ -141,6 +159,22 @@ export class ForgeRedisClient {
 
   // ── Cache-aside & 비교키 무효화 ──────────────────────────────────────────
 
+  private revalidate<T>(key: string, fetchFn: () => Promise<T>, expireSeconds: number): Promise<T> {
+    const existing = this._inflight.get(key)
+    if (existing) return existing as Promise<T>
+
+    const promise = fetchFn()
+      .then(async (fresh) => {
+        await this.set(key, fresh, expireSeconds)
+        return fresh
+      })
+      .finally(() => {
+        this._inflight.delete(key)
+      })
+    this._inflight.set(key, promise)
+    return promise
+  }
+
   /**
    * @description 캐시가 있으면 바로 반환하고, 없으면 fetchFn을 호출해 데이터를 가져온 뒤 저장한다.
    * DB 직접 조회 빈도를 줄이는 표준 cache-aside 패턴이다. `expireSeconds`를 지정하면
@@ -158,9 +192,42 @@ export class ForgeRedisClient {
       return cached
     }
     this.observer?.onMiss()
-    const fresh = await fetchFn()
-    await this.set(key, fresh, expireSeconds)
-    return fresh
+    return this.dedupe(key, async () => {
+      const fresh = await fetchFn()
+      await this.set(key, fresh, expireSeconds)
+      return fresh
+    })
+  }
+
+  /**
+   * @description Stale-While-Revalidate 캐시 패턴. `staleAfter` 이내이면 즉시 반환(fresh),
+   * `staleAfter`를 초과하면 낡은 데이터를 즉시 반환하면서 백그라운드에서 갱신을 시작한다.
+   * 키가 없거나 Redis TTL이 만료된 경우에만 blocking fetch가 발생한다.
+   * `staleAfter`는 `expireSeconds`보다 작아야 의미 있다 (`staleAfter >= expireSeconds`이면 SWR 효과 없음).
+   */
+  async getOrSetSwr<T>(
+    key: string,
+    fetchFn: () => Promise<T>,
+    options: { expireSeconds: number; staleAfter: number },
+  ): Promise<T> {
+    const raw = await this.client.get(key)
+    const item = this.deserialize<T>(raw)
+
+    if (item.data !== null) {
+      const ageSeconds = (Date.now() - item.cachedAt) / 1000
+      if (ageSeconds < options.staleAfter) {
+        this.observer?.onHit()
+        return item.data
+      }
+      // Stale: 즉시 반환 + 백그라운드 갱신
+      this.observer?.onMiss()
+      void this.revalidate(key, fetchFn, options.expireSeconds)
+      return item.data
+    }
+
+    // Expired/missing: blocking fetch
+    this.observer?.onMiss()
+    return this.revalidate(key, fetchFn, options.expireSeconds)
   }
 
   /**
@@ -194,9 +261,11 @@ export class ForgeRedisClient {
       return cached
     }
     this.observer?.onMiss()
-    const fresh = await fetchFn()
-    await this.set(key, fresh, expireSeconds)
-    return fresh
+    return this.dedupe(key, async () => {
+      const fresh = await fetchFn()
+      await this.set(key, fresh, expireSeconds)
+      return fresh
+    })
   }
 
   /**

@@ -243,6 +243,146 @@ describe('ForgeRedisClient', () => {
     })
   })
 
+  describe('singleflight', () => {
+    it('활성화 시 동시 cache miss에서 fetchFn을 1번만 실행하고 결과를 공유한다', async () => {
+      const sfClient = new ForgeRedisClient({ singleflight: true })
+      mockClient.get.mockResolvedValue(null)
+      mockClient.set.mockResolvedValue('OK')
+      const fetchFn = vi.fn().mockResolvedValue('fresh')
+
+      const results = await Promise.all([
+        sfClient.getOrSet('key', fetchFn),
+        sfClient.getOrSet('key', fetchFn),
+        sfClient.getOrSet('key', fetchFn),
+      ])
+
+      expect(fetchFn).toHaveBeenCalledOnce()
+      expect(results).toEqual(['fresh', 'fresh', 'fresh'])
+    })
+
+    it('비활성화(기본값) 시 동시 호출에서 fetchFn을 각각 실행한다', async () => {
+      mockClient.get.mockResolvedValue(null)
+      mockClient.set.mockResolvedValue('OK')
+      const fetchFn = vi.fn().mockResolvedValue('fresh')
+
+      await Promise.all([
+        client.getOrSet('key', fetchFn),
+        client.getOrSet('key', fetchFn),
+        client.getOrSet('key', fetchFn),
+      ])
+
+      expect(fetchFn).toHaveBeenCalledTimes(3)
+    })
+
+    it('fetchFn이 reject되면 _inflight 키가 제거되어 다음 호출이 재실행된다', async () => {
+      const sfClient = new ForgeRedisClient({ singleflight: true })
+      mockClient.get.mockResolvedValue(null)
+      mockClient.set.mockResolvedValue('OK')
+      const fetchFn = vi.fn()
+        .mockRejectedValueOnce(new Error('fetch failed'))
+        .mockResolvedValue('fresh')
+
+      await expect(sfClient.getOrSet('key', fetchFn)).rejects.toThrow('fetch failed')
+      const result = await sfClient.getOrSet('key', fetchFn)
+      expect(result).toBe('fresh')
+      expect(fetchFn).toHaveBeenCalledTimes(2)
+    })
+
+    it('cGetOrSet도 singleflight가 적용된다', async () => {
+      const sfClient = new ForgeRedisClient({ singleflight: true })
+      mockClient.mget.mockResolvedValue([null, null])
+      mockClient.set.mockResolvedValue('OK')
+      const fetchFn = vi.fn().mockResolvedValue('fresh')
+
+      const results = await Promise.all([
+        sfClient.cGetOrSet('key', 'cmpKey', fetchFn),
+        sfClient.cGetOrSet('key', 'cmpKey', fetchFn),
+        sfClient.cGetOrSet('key', 'cmpKey', fetchFn),
+      ])
+
+      expect(fetchFn).toHaveBeenCalledOnce()
+      expect(results).toEqual(['fresh', 'fresh', 'fresh'])
+    })
+  })
+
+  describe('getOrSetSwr', () => {
+    const FRESH = JSON.stringify({ cachedAt: Date.now() - 10_000, data: 'stale-value' })
+    const STALE = JSON.stringify({ cachedAt: Date.now() - 120_000, data: 'stale-value' })
+
+    it('fresh 데이터이면 fetchFn을 호출하지 않고 즉시 반환한다', async () => {
+      mockClient.get.mockResolvedValue(JSON.stringify({ cachedAt: Date.now(), data: 'cached' }))
+      const fetchFn = vi.fn()
+
+      const result = await client.getOrSetSwr('key', fetchFn, { expireSeconds: 300, staleAfter: 60 })
+
+      expect(result).toBe('cached')
+      expect(fetchFn).not.toHaveBeenCalled()
+    })
+
+    it('fresh이면 observer.onHit을 호출한다', async () => {
+      const observer = { onHit: vi.fn(), onMiss: vi.fn() }
+      const sfClient = new ForgeRedisClient({ observer })
+      mockClient.get.mockResolvedValue(JSON.stringify({ cachedAt: Date.now(), data: 'cached' }))
+
+      await sfClient.getOrSetSwr('key', vi.fn(), { expireSeconds: 300, staleAfter: 60 })
+
+      expect(observer.onHit).toHaveBeenCalledOnce()
+      expect(observer.onMiss).not.toHaveBeenCalled()
+    })
+
+    it('stale 데이터이면 즉시 stale 값을 반환하고 백그라운드에서 fetchFn을 실행한다', async () => {
+      mockClient.get.mockResolvedValue(STALE)
+      mockClient.set.mockResolvedValue('OK')
+      const fetchFn = vi.fn().mockResolvedValue('fresh')
+
+      const result = await client.getOrSetSwr('key', fetchFn, { expireSeconds: 300, staleAfter: 60 })
+
+      expect(result).toBe('stale-value')
+      // 백그라운드 갱신 완료 대기
+      await vi.waitFor(() => expect(fetchFn).toHaveBeenCalledOnce())
+    })
+
+    it('stale이면 observer.onMiss를 호출한다', async () => {
+      const observer = { onHit: vi.fn(), onMiss: vi.fn() }
+      const sfClient = new ForgeRedisClient({ observer })
+      mockClient.get.mockResolvedValue(STALE)
+      mockClient.set.mockResolvedValue('OK')
+
+      await sfClient.getOrSetSwr('key', vi.fn().mockResolvedValue('fresh'), {
+        expireSeconds: 300,
+        staleAfter: 60,
+      })
+
+      expect(observer.onMiss).toHaveBeenCalledOnce()
+      expect(observer.onHit).not.toHaveBeenCalled()
+    })
+
+    it('키가 없으면 blocking fetch 후 반환한다', async () => {
+      mockClient.get.mockResolvedValue(null)
+      mockClient.set.mockResolvedValue('OK')
+      const fetchFn = vi.fn().mockResolvedValue('fresh')
+
+      const result = await client.getOrSetSwr('key', fetchFn, { expireSeconds: 300, staleAfter: 60 })
+
+      expect(result).toBe('fresh')
+      expect(fetchFn).toHaveBeenCalledOnce()
+    })
+
+    it('stale 상태 동시 호출 시 fetchFn은 1번만 실행된다', async () => {
+      mockClient.get.mockResolvedValue(FRESH)
+      mockClient.set.mockResolvedValue('OK')
+      const fetchFn = vi.fn().mockResolvedValue('fresh')
+
+      await Promise.all([
+        client.getOrSetSwr('key', fetchFn, { expireSeconds: 300, staleAfter: 5 }),
+        client.getOrSetSwr('key', fetchFn, { expireSeconds: 300, staleAfter: 5 }),
+        client.getOrSetSwr('key', fetchFn, { expireSeconds: 300, staleAfter: 5 }),
+      ])
+
+      await vi.waitFor(() => expect(fetchFn).toHaveBeenCalledOnce())
+    })
+  })
+
   describe('cGet', () => {
     it('데이터가 compareKey보다 최신이면 데이터를 반환한다', async () => {
       mockClient.mget.mockResolvedValue([
