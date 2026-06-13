@@ -1,3 +1,24 @@
+// ── Utility Types ─────────────────────────────────────────────────────────
+
+/** T | null | undefined */
+export type Nullable<T> = T | null | undefined
+
+/** 모든 중첩 프로퍼티를 재귀적으로 optional로 만든다. */
+export type DeepPartial<T> = T extends object
+  ? { [P in keyof T]?: DeepPartial<T[P]> }
+  : T
+
+/** 객체 타입의 value union 타입을 추출한다. */
+export type ValueOf<T> = T[keyof T]
+
+/** 특정 키를 Required로 만들고 나머지는 그대로 둔다. */
+export type RequireFields<T, K extends keyof T> = T & Required<Pick<T, K>>
+
+/** Promise를 unwrap한 타입. `Awaited<T>`의 명시적 alias. */
+export type Resolved<T> = T extends Promise<infer R> ? R : T
+
+// ── Domain Types ─────────────────────────────────────────────────────────
+
 export interface RequestContext {
   traceId: string
   requestId: string
