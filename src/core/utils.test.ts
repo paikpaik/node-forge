@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { omit, pick, deepMerge } from './utils'
+import { omit, pick, deepMerge, chunk, groupBy, keyBy, compact } from './utils'
 
 describe('omit', () => {
   it('지정한 키를 제거한 객체를 반환한다', () => {
@@ -62,5 +62,82 @@ describe('deepMerge', () => {
     const target = { a: 1, nested: { x: 1 } }
     deepMerge(target, { nested: { x: 99 } })
     expect(target.nested.x).toBe(1)
+  })
+})
+
+describe('chunk', () => {
+  it('배열을 size 개씩 나눈다', () => {
+    expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]])
+  })
+
+  it('나머지가 없으면 균등하게 나눈다', () => {
+    expect(chunk([1, 2, 3, 4], 2)).toEqual([[1, 2], [3, 4]])
+  })
+
+  it('size가 배열보다 크면 배열 전체를 하나로 반환한다', () => {
+    expect(chunk([1, 2, 3], 10)).toEqual([[1, 2, 3]])
+  })
+
+  it('빈 배열이면 빈 배열을 반환한다', () => {
+    expect(chunk([], 3)).toEqual([])
+  })
+
+  it('size가 0 이하이면 에러를 던진다', () => {
+    expect(() => chunk([1, 2], 0)).toThrow()
+    expect(() => chunk([1, 2], -1)).toThrow()
+  })
+})
+
+describe('groupBy', () => {
+  it('keyFn 반환값으로 배열을 그루핑한다', () => {
+    const arr = [{ id: 1, type: 'a' }, { id: 2, type: 'b' }, { id: 3, type: 'a' }]
+    const result = groupBy(arr, (item) => item.type)
+    expect(result['a']).toEqual([{ id: 1, type: 'a' }, { id: 3, type: 'a' }])
+    expect(result['b']).toEqual([{ id: 2, type: 'b' }])
+  })
+
+  it('빈 배열이면 빈 객체를 반환한다', () => {
+    expect(groupBy([], (x: string) => x)).toEqual({})
+  })
+
+  it('모든 요소가 같은 키이면 하나의 그룹으로 묶인다', () => {
+    const result = groupBy([1, 2, 3], () => 'same')
+    expect(result['same']).toEqual([1, 2, 3])
+  })
+})
+
+describe('keyBy', () => {
+  it('keyFn 반환값으로 배열을 인덱싱한다', () => {
+    const users = [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]
+    const byId = keyBy(users, (u) => u.id)
+    expect(byId[1]).toEqual({ id: 1, name: 'Alice' })
+    expect(byId[2]).toEqual({ id: 2, name: 'Bob' })
+  })
+
+  it('키 중복 시 뒤에 오는 항목으로 덮어쓴다', () => {
+    const arr = [{ id: 1, v: 'first' }, { id: 1, v: 'second' }]
+    expect(keyBy(arr, (x) => x.id)[1]).toEqual({ id: 1, v: 'second' })
+  })
+
+  it('빈 배열이면 빈 객체를 반환한다', () => {
+    expect(keyBy([], (x: string) => x)).toEqual({})
+  })
+})
+
+describe('compact', () => {
+  it('null과 undefined를 제거한다', () => {
+    expect(compact([1, null, 2, undefined, 3])).toEqual([1, 2, 3])
+  })
+
+  it('0, 빈 문자열, false는 제거하지 않는다', () => {
+    expect(compact([0, '', false, null, undefined])).toEqual([0, '', false])
+  })
+
+  it('빈 배열이면 빈 배열을 반환한다', () => {
+    expect(compact([])).toEqual([])
+  })
+
+  it('null/undefined가 없으면 원본과 같은 값을 반환한다', () => {
+    expect(compact([1, 2, 3])).toEqual([1, 2, 3])
   })
 })
