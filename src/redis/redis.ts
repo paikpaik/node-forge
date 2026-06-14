@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import Redis from 'ioredis'
+import { ForgeError } from '../core/errors'
+import { sleep } from '../core/async'
 import type { CacheObserver, RedisOptions } from './redis.options'
 
 const UNLOCK_SCRIPT = `
@@ -9,6 +11,13 @@ else
   return 0
 end
 `
+
+export interface WithLockOptions {
+  /** 락 획득 실패 시 재시도 횟수. 기본값 0 (즉시 실패). */
+  retries?: number
+  /** 재시도 간격 ms. 기본값 50. */
+  retryDelay?: number
+}
 
 interface CachedItem<T> {
   cachedAt: number
@@ -299,6 +308,37 @@ export class ForgeRedisClient {
   async unlock(key: string, token: string): Promise<boolean> {
     const result = await this.client.eval(UNLOCK_SCRIPT, 1, key, token)
     return result === 1
+  }
+
+  /**
+   * @description 락을 획득한 뒤 fn을 실행하고, 성공/실패 여부와 관계없이 finally에서 락을 해제한다.
+   * 락 획득에 실패하면 retries 횟수까지 retryDelay ms 간격으로 재시도한다.
+   * 모든 재시도가 소진되면 `ForgeError('E9501', ...)` throw. fn이 던진 에러는 그대로 전파된다.
+   */
+  async withLock<T>(
+    key: string,
+    ttlSeconds: number,
+    fn: () => Promise<T>,
+    options?: WithLockOptions,
+  ): Promise<T> {
+    const retries = options?.retries ?? 0
+    const retryDelay = options?.retryDelay ?? 50
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const token = await this.lock(key, ttlSeconds)
+      if (token !== null) {
+        try {
+          return await fn()
+        } finally {
+          await this.unlock(key, token)
+        }
+      }
+      if (attempt < retries) {
+        await sleep(retryDelay)
+      }
+    }
+
+    throw new ForgeError('E9501', `Failed to acquire lock: ${key}`)
   }
 
   // ── Rate Limiter ────────────────────────────────────────────────────────────

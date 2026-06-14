@@ -507,6 +507,69 @@ describe('ForgeRedisClient', () => {
     })
   })
 
+  describe('withLock', () => {
+    it('락 획득 성공 시 fn 결과를 반환한다', async () => {
+      mockClient.set.mockResolvedValue('OK')
+      mockClient.eval.mockResolvedValue(1)
+      const result = await client.withLock('job:run', 30, async () => 'done')
+      expect(result).toBe('done')
+    })
+
+    it('fn 실행 후 unlock을 호출한다', async () => {
+      mockClient.set.mockResolvedValue('OK')
+      mockClient.eval.mockResolvedValue(1)
+      await client.withLock('job:run', 30, async () => 42)
+      expect(mockClient.eval).toHaveBeenCalledOnce()
+    })
+
+    it('fn이 에러를 던져도 unlock을 호출하고 에러를 전파한다', async () => {
+      mockClient.set.mockResolvedValue('OK')
+      mockClient.eval.mockResolvedValue(1)
+      await expect(
+        client.withLock('job:run', 30, async () => { throw new Error('fn error') }),
+      ).rejects.toThrow('fn error')
+      expect(mockClient.eval).toHaveBeenCalledOnce()
+    })
+
+    it('락 획득 실패 시 ForgeError(E9501)를 던진다', async () => {
+      mockClient.set.mockResolvedValue(null)
+      await expect(client.withLock('job:run', 30, async () => 'ok')).rejects.toMatchObject({
+        code: 'E9501',
+      })
+      expect(mockClient.eval).not.toHaveBeenCalled()
+    })
+
+    it('에러 메시지에 key가 포함된다', async () => {
+      mockClient.set.mockResolvedValue(null)
+      await expect(client.withLock('batch:heavy', 30, async () => 'ok')).rejects.toThrow(
+        'batch:heavy',
+      )
+    })
+
+    it('retries 설정 시 재시도 중 성공하면 fn 결과를 반환한다', async () => {
+      mockClient.set
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce('OK')
+      mockClient.eval.mockResolvedValue(1)
+      const result = await client.withLock('job:run', 30, async () => 'ok', {
+        retries: 2,
+        retryDelay: 0,
+      })
+      expect(result).toBe('ok')
+      expect(mockClient.set).toHaveBeenCalledTimes(3)
+      expect(mockClient.eval).toHaveBeenCalledTimes(1)
+    })
+
+    it('모든 재시도 실패 시 E9501을 던진다', async () => {
+      mockClient.set.mockResolvedValue(null)
+      await expect(
+        client.withLock('job:run', 30, async () => 'ok', { retries: 2, retryDelay: 0 }),
+      ).rejects.toMatchObject({ code: 'E9501' })
+      expect(mockClient.set).toHaveBeenCalledTimes(3)
+    })
+  })
+
   // ── Rate Limiter ──────────────────────────────────────────────────────────
 
   describe('checkRateLimit', () => {
