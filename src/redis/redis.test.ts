@@ -47,6 +47,8 @@ const mockClient = {
   zrevrange: vi.fn(),
   zcount: vi.fn(),
   zcard: vi.fn(),
+  zpopmin: vi.fn(),
+  zpopmax: vi.fn(),
   pipeline: vi.fn(),
   publish: vi.fn(),
   duplicate: vi.fn(),
@@ -1019,6 +1021,37 @@ describe('ForgeRedisClient', () => {
     it('zcard는 전체 멤버 수를 반환한다', async () => {
       mockClient.zcard.mockResolvedValue(10)
       expect(await client.zcard('rank')).toBe(10)
+    })
+  })
+
+  describe('zpopmin / zpopmax', () => {
+    it('zpopmin은 score가 가장 낮은 멤버를 조회와 동시에 제거한다', async () => {
+      mockClient.zpopmin.mockResolvedValue(['user:1', '100'])
+      expect(await client.zpopmin('rank')).toEqual([{ member: 'user:1', score: 100 }])
+      expect(mockClient.zpopmin).toHaveBeenCalledWith('rank', 1)
+    })
+
+    it('zpopmin은 count만큼 오름차순으로 반환한다', async () => {
+      mockClient.zpopmin.mockResolvedValue(['user:1', '100', 'user:2', '200'])
+      expect(await client.zpopmin('rank', 2)).toEqual([
+        { member: 'user:1', score: 100 },
+        { member: 'user:2', score: 200 },
+      ])
+      expect(mockClient.zpopmin).toHaveBeenCalledWith('rank', 2)
+    })
+
+    it('zpopmax는 score가 가장 높은 멤버를 조회와 동시에 제거한다', async () => {
+      mockClient.zpopmax.mockResolvedValue(['user:2', '200'])
+      expect(await client.zpopmax('rank')).toEqual([{ member: 'user:2', score: 200 }])
+      expect(mockClient.zpopmax).toHaveBeenCalledWith('rank', 1)
+    })
+
+    it('zpopmax는 count만큼 내림차순으로 반환한다', async () => {
+      mockClient.zpopmax.mockResolvedValue(['user:2', '200', 'user:1', '100'])
+      expect(await client.zpopmax('rank', 2)).toEqual([
+        { member: 'user:2', score: 200 },
+        { member: 'user:1', score: 100 },
+      ])
     })
   })
 

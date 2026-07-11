@@ -759,6 +759,24 @@ export class ForgeRedisClient {
     return this.client.zcard(key)
   }
 
+  /**
+   * @description score가 가장 낮은 멤버부터 count개를 조회와 동시에 제거한다.
+   * 제거된 { member, score }[] 를 오름차순으로 반환한다. 우선순위 큐, 지연 작업 처리에 사용한다.
+   */
+  async zpopmin(key: string, count = 1): Promise<{ member: string; score: number }[]> {
+    const raws = await this.client.zpopmin(key, count)
+    return this.parseWithScores(raws)
+  }
+
+  /**
+   * @description score가 가장 높은 멤버부터 count개를 조회와 동시에 제거한다.
+   * 제거된 { member, score }[] 를 내림차순으로 반환한다.
+   */
+  async zpopmax(key: string, count = 1): Promise<{ member: string; score: number }[]> {
+    const raws = await this.client.zpopmax(key, count)
+    return this.parseWithScores(raws)
+  }
+
   // ── 랭킹 헬퍼 ────────────────────────────────────────────────────────────
 
   /**
