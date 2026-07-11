@@ -4,13 +4,13 @@
  */
 export function parseDate(value: unknown): Date | null {
   if (value instanceof Date) {
-    return isNaN(value.getTime()) ? null : value
+    return isNaN(value.getTime()) ? null : value;
   }
-  if (typeof value === 'string' && value.length > 0) {
-    const date = new Date(value)
-    return isNaN(date.getTime()) ? null : date
+  if (typeof value === "string" && value.length > 0) {
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
   }
-  return null
+  return null;
 }
 
 /**
@@ -18,7 +18,7 @@ export function parseDate(value: unknown): Date | null {
  * 캐시 항목이나 토큰의 만료 여부를 확인할 때 사용한다.
  */
 export function isExpired(date: Date, ttlMs: number): boolean {
-  return Date.now() - date.getTime() > ttlMs
+  return Date.now() - date.getTime() > ttlMs;
 }
 
 /**
@@ -26,9 +26,9 @@ export function isExpired(date: Date, ttlMs: number): boolean {
  * 원본 date는 변경되지 않는다.
  */
 export function toStartOfDay(date: Date): Date {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 /**
@@ -36,9 +36,9 @@ export function toStartOfDay(date: Date): Date {
  * 원본 date는 변경되지 않는다.
  */
 export function toEndOfDay(date: Date): Date {
-  const d = new Date(date)
-  d.setHours(23, 59, 59, 999)
-  return d
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
 }
 
 /**
@@ -46,19 +46,19 @@ export function toEndOfDay(date: Date): Date {
  * 서머타임 전환이 있는 타임존에서는 극히 드물게 1일 오차가 생길 수 있다.
  */
 export function daysBetween(a: Date, b: Date): number {
-  return Math.floor(Math.abs(a.getTime() - b.getTime()) / 86_400_000)
+  return Math.floor(Math.abs(a.getTime() - b.getTime()) / 86_400_000);
 }
 
 /**
  * @description Date를 UTC 기준 'YYYY-MM-DD' 형식 문자열로 변환한다.
  */
 export function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10)
+  return date.toISOString().slice(0, 10);
 }
 
 /**
  * @description Date를 UTC 기준 'YYYY-MM-DDTHH:mm:ss' 형식 문자열로 변환한다.
  */
 export function toDateTimeString(date: Date): string {
-  return date.toISOString().slice(0, 19)
+  return date.toISOString().slice(0, 19);
 }

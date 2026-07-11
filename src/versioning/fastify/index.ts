@@ -1,1 +1,1 @@
-export * from './versioning.plugin'
+export * from "./versioning.plugin";

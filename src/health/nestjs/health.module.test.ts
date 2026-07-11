@@ -1,16 +1,16 @@
-import { describe, it, expect, vi } from 'vitest'
-import { HealthModule } from './health.module'
-import { HealthController } from './health.controller'
-import { HEALTH_CHECKERS } from './health.constants'
+import { describe, it, expect, vi } from "vitest";
+import { HealthModule } from "./health.module";
+import { HealthController } from "./health.controller";
+import { HEALTH_CHECKERS } from "./health.constants";
 
-describe('HealthModule.forRoot', () => {
-  it('HealthController와 체커 프로바이더를 등록한 DynamicModule을 반환한다', () => {
-    const checkers = { db: vi.fn().mockResolvedValue(undefined) }
+describe("HealthModule.forRoot", () => {
+  it("HealthController와 체커 프로바이더를 등록한 DynamicModule을 반환한다", () => {
+    const checkers = { db: vi.fn().mockResolvedValue(undefined) };
 
-    const dynamicModule = HealthModule.forRoot({ checkers })
+    const dynamicModule = HealthModule.forRoot({ checkers });
 
-    expect(dynamicModule.module).toBe(HealthModule)
-    expect(dynamicModule.controllers).toEqual([HealthController])
-    expect(dynamicModule.providers).toEqual([{ provide: HEALTH_CHECKERS, useValue: checkers }])
-  })
-})
+    expect(dynamicModule.module).toBe(HealthModule);
+    expect(dynamicModule.controllers).toEqual([HealthController]);
+    expect(dynamicModule.providers).toEqual([{ provide: HEALTH_CHECKERS, useValue: checkers }]);
+  });
+});

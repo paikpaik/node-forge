@@ -1,22 +1,15 @@
-import {
-  Registry,
-  Counter,
-  Gauge,
-  Histogram,
-  Summary,
-  collectDefaultMetrics,
-} from 'prom-client'
+import { Registry, Counter, Gauge, Histogram, Summary, collectDefaultMetrics } from "prom-client";
 import type {
   CounterConfiguration,
   GaugeConfiguration,
   HistogramConfiguration,
   SummaryConfiguration,
-} from 'prom-client'
+} from "prom-client";
 
 export interface MetricsOptions {
-  prefix?: string
-  defaultMetrics?: boolean
-  labels?: Record<string, string>
+  prefix?: string;
+  defaultMetrics?: boolean;
+  labels?: Record<string, string>;
 }
 
 /**
@@ -26,20 +19,20 @@ export interface MetricsOptions {
  * `counter`/`gauge`/`histogram`/`summary`로 만든 지표는 모두 이 레지스트리에 등록된다.
  */
 export class ForgeMetrics {
-  readonly registry: Registry
+  readonly registry: Registry;
 
   constructor(options: MetricsOptions = {}) {
-    this.registry = new Registry()
+    this.registry = new Registry();
 
     if (options.labels) {
-      this.registry.setDefaultLabels(options.labels)
+      this.registry.setDefaultLabels(options.labels);
     }
 
     if (options.defaultMetrics !== false) {
       collectDefaultMetrics({
         register: this.registry,
         prefix: options.prefix,
-      })
+      });
     }
   }
 
@@ -48,22 +41,20 @@ export class ForgeMetrics {
    * (`registers`를 직접 넘길 필요 없음). 요청 수, 에러 수처럼 "계속 증가하기만 하는" 값에 사용한다.
    * `gauge`/`histogram`/`summary`도 동일한 방식으로 등록된다.
    */
-  counter<T extends string>(config: Omit<CounterConfiguration<T>, 'registers'>): Counter<T> {
-    return new Counter<T>({ ...config, registers: [this.registry] })
+  counter<T extends string>(config: Omit<CounterConfiguration<T>, "registers">): Counter<T> {
+    return new Counter<T>({ ...config, registers: [this.registry] });
   }
 
-  gauge<T extends string>(config: Omit<GaugeConfiguration<T>, 'registers'>): Gauge<T> {
-    return new Gauge<T>({ ...config, registers: [this.registry] })
+  gauge<T extends string>(config: Omit<GaugeConfiguration<T>, "registers">): Gauge<T> {
+    return new Gauge<T>({ ...config, registers: [this.registry] });
   }
 
-  histogram<T extends string>(
-    config: Omit<HistogramConfiguration<T>, 'registers'>,
-  ): Histogram<T> {
-    return new Histogram<T>({ ...config, registers: [this.registry] })
+  histogram<T extends string>(config: Omit<HistogramConfiguration<T>, "registers">): Histogram<T> {
+    return new Histogram<T>({ ...config, registers: [this.registry] });
   }
 
-  summary<T extends string>(config: Omit<SummaryConfiguration<T>, 'registers'>): Summary<T> {
-    return new Summary<T>({ ...config, registers: [this.registry] })
+  summary<T extends string>(config: Omit<SummaryConfiguration<T>, "registers">): Summary<T> {
+    return new Summary<T>({ ...config, registers: [this.registry] });
   }
 
   /**
@@ -71,7 +62,7 @@ export class ForgeMetrics {
    * `/metrics` 엔드포인트에서 그대로 응답 바디로 사용한다 (`contentType`과 함께 헤더 설정).
    */
   async metrics(): Promise<string> {
-    return this.registry.metrics()
+    return this.registry.metrics();
   }
 
   /**
@@ -79,7 +70,7 @@ export class ForgeMetrics {
    * Prometheus가 응답 포맷 버전을 인식할 수 있도록 반드시 함께 설정해야 한다.
    */
   get contentType(): string {
-    return this.registry.contentType
+    return this.registry.contentType;
   }
 
   /**
@@ -87,7 +78,7 @@ export class ForgeMetrics {
    * 깨끗한 상태로 시작하기 위해 사용한다 (운영 코드에서 호출할 일은 거의 없음).
    */
   clear(): void {
-    this.registry.clear()
+    this.registry.clear();
   }
 }
 
@@ -96,5 +87,5 @@ export class ForgeMetrics {
  * 싶을 때 사용한다 (동작은 `new ForgeMetrics(options)`와 동일).
  */
 export function createMetrics(options?: MetricsOptions): ForgeMetrics {
-  return new ForgeMetrics(options)
+  return new ForgeMetrics(options);
 }

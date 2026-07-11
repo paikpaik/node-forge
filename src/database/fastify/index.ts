@@ -1,1 +1,1 @@
-export * from './database.plugin'
+export * from "./database.plugin";

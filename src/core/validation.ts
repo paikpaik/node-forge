@@ -3,16 +3,16 @@
  * `parsePagination` 내부에서도 사용되며, 단독으로 ID·카운트 파싱에도 활용할 수 있다.
  */
 export function parsePositiveInt(value: unknown): number | null {
-  if (value === null || value === undefined) return null
-  const n = Number(value)
-  if (!Number.isInteger(n) || n <= 0) return null
-  return n
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return n;
 }
 
 export interface ParsedPagination {
-  page: number   // 1-based, 최소 1
-  size: number   // 최소 1, 최대 maxSize
-  offset: number // (page - 1) * size
+  page: number; // 1-based, 최소 1
+  size: number; // 최소 1, 최대 maxSize
+  offset: number; // (page - 1) * size
 }
 
 /**
@@ -24,18 +24,18 @@ export function parsePagination(
   query: { page?: unknown; size?: unknown },
   options?: { defaultSize?: number; maxSize?: number },
 ): ParsedPagination {
-  const defaultSize = options?.defaultSize ?? 20
-  const maxSize = options?.maxSize ?? 100
+  const defaultSize = options?.defaultSize ?? 20;
+  const maxSize = options?.maxSize ?? 100;
 
-  const page = Math.max(1, parsePositiveInt(query.page) ?? 1)
-  const size = Math.min(maxSize, Math.max(1, parsePositiveInt(query.size) ?? defaultSize))
+  const page = Math.max(1, parsePositiveInt(query.page) ?? 1);
+  const size = Math.min(maxSize, Math.max(1, parsePositiveInt(query.size) ?? defaultSize));
 
-  return { page, size, offset: (page - 1) * size }
+  return { page, size, offset: (page - 1) * size };
 }
 
 export interface ParsedSort {
-  field: string
-  direction: 'ASC' | 'DESC'
+  field: string;
+  direction: "ASC" | "DESC";
 }
 
 /**
@@ -48,14 +48,14 @@ export function parseSort(
   allowedFields: string[],
   defaultField?: string,
 ): ParsedSort {
-  const sortStr = typeof query.sort === 'string' ? query.sort.trim() : ''
-  const [rawField = '', rawDir = ''] = sortStr.split(':')
+  const sortStr = typeof query.sort === "string" ? query.sort.trim() : "";
+  const [rawField = "", rawDir = ""] = sortStr.split(":");
 
-  const matched = allowedFields.find((f) => f.toLowerCase() === rawField.toLowerCase())
-  const field = matched ?? defaultField ?? allowedFields[0] ?? ''
-  const direction: 'ASC' | 'DESC' = rawDir.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'
+  const matched = allowedFields.find((f) => f.toLowerCase() === rawField.toLowerCase());
+  const field = matched ?? defaultField ?? allowedFields[0] ?? "";
+  const direction: "ASC" | "DESC" = rawDir.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
-  return { field, direction }
+  return { field, direction };
 }
 
 /**
@@ -64,7 +64,7 @@ export function parseSort(
  */
 export function assertDefined<T>(value: T | null | undefined, label?: string): asserts value is T {
   if (value === null || value === undefined) {
-    throw new Error(label ? `${label} is required` : 'Value is required')
+    throw new Error(label ? `${label} is required` : "Value is required");
   }
 }
 
@@ -73,9 +73,9 @@ export function assertDefined<T>(value: T | null | undefined, label?: string): a
  * 서비스 시작 시 필수 설정을 한 번에 검증해 미설정이 런타임 중간에 드러나는 것을 방지한다.
  */
 export function requireEnv(name: string): string {
-  const value = process.env[name]
+  const value = process.env[name];
   if (!value) {
-    throw new Error(`Environment variable "${name}" is required but not set`)
+    throw new Error(`Environment variable "${name}" is required but not set`);
   }
-  return value
+  return value;
 }

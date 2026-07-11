@@ -1,12 +1,12 @@
-import { Module } from '@nestjs/common'
-import type { DynamicModule, FactoryProvider, ModuleMetadata } from '@nestjs/common'
-import { ForgeHttpClient } from '../http'
-import type { HttpOptions } from '../http.options'
-import { HTTP_CLIENT, HTTP_OPTIONS } from './http.constants'
+import { Module } from "@nestjs/common";
+import type { DynamicModule, FactoryProvider, ModuleMetadata } from "@nestjs/common";
+import { ForgeHttpClient } from "../http";
+import type { HttpOptions } from "../http.options";
+import { HTTP_CLIENT, HTTP_OPTIONS } from "./http.constants";
 
-export interface HttpAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
-  useFactory: (...args: unknown[]) => HttpOptions | Promise<HttpOptions>
-  inject?: FactoryProvider['inject']
+export interface HttpAsyncOptions extends Pick<ModuleMetadata, "imports"> {
+  useFactory: (...args: unknown[]) => HttpOptions | Promise<HttpOptions>;
+  inject?: FactoryProvider["inject"];
 }
 
 /**
@@ -31,7 +31,7 @@ export class HttpModule {
         },
       ],
       exports: [HTTP_CLIENT],
-    }
+    };
   }
 
   /**
@@ -55,6 +55,6 @@ export class HttpModule {
         },
       ],
       exports: [HTTP_CLIENT],
-    }
+    };
   }
 }

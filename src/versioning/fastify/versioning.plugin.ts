@@ -1,25 +1,24 @@
-import fp from 'fastify-plugin'
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify'
-import { resolveVersion, DEFAULT_HEADER_NAME } from '../versioning'
-import type { VersionOptions, VersionResolution } from '../versioning'
+import fp from "fastify-plugin";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import { resolveVersion, DEFAULT_HEADER_NAME } from "../versioning";
+import type { VersionOptions, VersionResolution } from "../versioning";
 
-declare module 'fastify' {
+declare module "fastify" {
   interface FastifyRequest {
-    getApiVersion(options: VersionOptions): VersionResolution
+    getApiVersion(options: VersionOptions): VersionResolution;
   }
 }
 
 const versioningPlugin: FastifyPluginAsync = async (fastify) => {
-  fastify.decorateRequest('getApiVersion', {
-    getter(this: FastifyRequest) {
-      const request = this
+  fastify.decorateRequest("getApiVersion", {
+    getter(this: FastifyRequest): (options: VersionOptions) => VersionResolution {
       return (options: VersionOptions): VersionResolution => {
-        const headerName = options.headerName ?? DEFAULT_HEADER_NAME
-        return resolveVersion(request.headers[headerName], options)
-      }
+        const headerName = options.headerName ?? DEFAULT_HEADER_NAME;
+        return resolveVersion(this.headers[headerName], options);
+      };
     },
-  })
-}
+  });
+};
 
 /**
  * @description 요청의 Accept-Version 헤더(기본값, options.headerName으로 변경 가능)를 협상해주는
@@ -34,5 +33,5 @@ const versioningPlugin: FastifyPluginAsync = async (fastify) => {
  * })
  */
 export const fastifyVersioning = fp(versioningPlugin, {
-  name: '@paikpaik/node-forge/versioning',
-})
+  name: "@paikpaik/node-forge/versioning",
+});

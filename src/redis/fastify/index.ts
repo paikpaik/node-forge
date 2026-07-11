@@ -1,1 +1,1 @@
-export * from './redis.plugin'
+export * from "./redis.plugin";

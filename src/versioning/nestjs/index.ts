@@ -1,1 +1,1 @@
-export * from './versioning.decorator'
+export * from "./versioning.decorator";

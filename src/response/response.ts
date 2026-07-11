@@ -1,13 +1,13 @@
-import type { PaginationMeta } from '../core'
+import type { PaginationMeta } from "../core";
 
 export interface ApiResponse<T = unknown> {
-  success: boolean
-  data?: T
+  success: boolean;
+  data?: T;
   error?: {
-    code: string
-    message: string
-  }
-  meta?: PaginationMeta
+    code: string;
+    message: string;
+  };
+  meta?: PaginationMeta;
 }
 
 /**
@@ -15,7 +15,7 @@ export interface ApiResponse<T = unknown> {
  * 컨트롤러/핸들러가 반환하는 데이터를 일관된 응답 형태로 통일할 때 사용한다.
  */
 export function ok<T>(data: T): ApiResponse<T> {
-  return { success: true, data }
+  return { success: true, data };
 }
 
 /**
@@ -24,7 +24,7 @@ export function ok<T>(data: T): ApiResponse<T> {
  * 사용자에게 노출 가능한 메시지를 의미한다.
  */
 export function fail(code: string, message: string): ApiResponse<never> {
-  return { success: false, error: { code, message } }
+  return { success: false, error: { code, message } };
 }
 
 /**
@@ -32,5 +32,5 @@ export function fail(code: string, message: string): ApiResponse<never> {
  * 목록 조회 API에서 `ok` 대신 사용해 `meta`(전체 개수, 페이지 정보 등)를 함께 전달한다.
  */
 export function paginated<T>(data: T[], meta: PaginationMeta): ApiResponse<T[]> {
-  return { success: true, data, meta }
+  return { success: true, data, meta };
 }

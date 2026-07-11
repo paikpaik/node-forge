@@ -3,14 +3,14 @@
  * node-forge는 "무엇이 최신/지원 버전인지" 알 수 없으므로 등록 시점이 아닌 호출 시점에 받는다.
  */
 export interface VersionOptions {
-  defaultVersion: string
-  supportedVersions?: string[]
+  defaultVersion: string;
+  supportedVersions?: string[];
   /**
    * 어떤 헤더에서 버전 값을 읽을지 (기본 'accept-version').
    * resolveVersion은 이미 추출된 값을 받으므로 이 옵션을 직접 사용하지 않는다 — NestJS/Fastify
    * 어댑터가 요청에서 헤더를 꺼낼 때 참조한다. 두 계층이 같은 옵션 객체를 공유하도록 하기 위함.
    */
-  headerName?: string
+  headerName?: string;
 }
 
 /**
@@ -19,12 +19,12 @@ export interface VersionOptions {
  * defaultVersion으로 대체되었는지를 나타낸다.
  */
 export interface VersionResolution {
-  requested: string | null
-  resolved: string
-  isFallback: boolean
+  requested: string | null;
+  resolved: string;
+  isFallback: boolean;
 }
 
-export const DEFAULT_HEADER_NAME = 'accept-version'
+export const DEFAULT_HEADER_NAME = "accept-version";
 
 /**
  * @description Accept-Version 헤더 값을 파싱해 최종적으로 사용할 API 버전을 결정한다.
@@ -37,15 +37,15 @@ export function resolveVersion(
   headerValue: string | string[] | undefined | null,
   options: VersionOptions,
 ): VersionResolution {
-  const requested = Array.isArray(headerValue) ? (headerValue[0] ?? null) : (headerValue ?? null)
+  const requested = Array.isArray(headerValue) ? (headerValue[0] ?? null) : (headerValue ?? null);
 
   if (requested === null) {
-    return { requested: null, resolved: options.defaultVersion, isFallback: true }
+    return { requested: null, resolved: options.defaultVersion, isFallback: true };
   }
 
   if (options.supportedVersions && !options.supportedVersions.includes(requested)) {
-    return { requested, resolved: options.defaultVersion, isFallback: true }
+    return { requested, resolved: options.defaultVersion, isFallback: true };
   }
 
-  return { requested, resolved: requested, isFallback: false }
+  return { requested, resolved: requested, isFallback: false };
 }

@@ -1,6 +1,6 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common'
-import { resolveVersion, DEFAULT_HEADER_NAME } from '../versioning'
-import type { VersionOptions, VersionResolution } from '../versioning'
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
+import { resolveVersion, DEFAULT_HEADER_NAME } from "../versioning";
+import type { VersionOptions, VersionResolution } from "../versioning";
 
 /**
  * @description 요청의 Accept-Version 헤더(기본값, options.headerName으로 변경 가능)를 읽어
@@ -13,9 +13,9 @@ import type { VersionOptions, VersionResolution } from '../versioning'
  */
 export const ApiVersion = createParamDecorator(
   (options: VersionOptions, ctx: ExecutionContext): VersionResolution => {
-    const request = ctx.switchToHttp().getRequest()
-    const headerName = options.headerName ?? DEFAULT_HEADER_NAME
-    const headerValue = request.headers[headerName]
-    return resolveVersion(headerValue, options)
+    const request = ctx.switchToHttp().getRequest();
+    const headerName = options.headerName ?? DEFAULT_HEADER_NAME;
+    const headerValue = request.headers[headerName];
+    return resolveVersion(headerValue, options);
   },
-)
+);

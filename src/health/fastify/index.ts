@@ -1,1 +1,1 @@
-export * from './health.plugin'
+export * from "./health.plugin";

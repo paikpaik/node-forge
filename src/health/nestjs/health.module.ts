@@ -1,11 +1,11 @@
-import { Module } from '@nestjs/common'
-import type { DynamicModule } from '@nestjs/common'
-import type { HealthChecker } from '../health'
-import { HealthController } from './health.controller'
-import { HEALTH_CHECKERS } from './health.constants'
+import { Module } from "@nestjs/common";
+import type { DynamicModule } from "@nestjs/common";
+import type { HealthChecker } from "../health";
+import { HealthController } from "./health.controller";
+import { HEALTH_CHECKERS } from "./health.constants";
 
 export interface HealthModuleOptions {
-  checkers: Record<string, HealthChecker>
+  checkers: Record<string, HealthChecker>;
 }
 
 /**
@@ -21,6 +21,6 @@ export class HealthModule {
       module: HealthModule,
       controllers: [HealthController],
       providers: [{ provide: HEALTH_CHECKERS, useValue: options.checkers }],
-    }
+    };
   }
 }

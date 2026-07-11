@@ -1,1 +1,1 @@
-export * from './events.plugin'
+export * from "./events.plugin";

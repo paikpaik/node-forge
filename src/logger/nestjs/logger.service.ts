@@ -1,9 +1,9 @@
-import { Injectable, Inject } from '@nestjs/common'
-import type { LoggerService } from '@nestjs/common'
-import { ForgeLogger, createLogger } from '../logger'
-import type { LoggerOptions } from '../logger.options'
-import type { RequestContext } from '../../core'
-import { LOGGER_OPTIONS } from './logger.constants'
+import { Injectable, Inject } from "@nestjs/common";
+import type { LoggerService } from "@nestjs/common";
+import { ForgeLogger, createLogger } from "../logger";
+import type { LoggerOptions } from "../logger.options";
+import type { RequestContext } from "../../core";
+import { LOGGER_OPTIONS } from "./logger.constants";
 
 /**
  * @description `ForgeLogger`를 NestJS의 `LoggerService` 인터페이스에 맞게 어댑팅한 서비스.
@@ -12,14 +12,14 @@ import { LOGGER_OPTIONS } from './logger.constants'
  */
 @Injectable()
 export class ForgeLoggerService implements LoggerService {
-  private readonly logger: ForgeLogger
+  private readonly logger: ForgeLogger;
 
   constructor(@Inject(LOGGER_OPTIONS) options: LoggerOptions) {
-    this.logger = createLogger(options)
+    this.logger = createLogger(options);
   }
 
   log(message: string, context?: string): void {
-    this.logger.info(message, context ? { context } : undefined)
+    this.logger.info(message, context ? { context } : undefined);
   }
 
   /**
@@ -27,19 +27,23 @@ export class ForgeLoggerService implements LoggerService {
    * 위임한다. 이렇게 해야 pino의 에러 직렬화(스택 포맷팅 등)를 그대로 활용할 수 있다.
    */
   error(message: string, trace?: string, context?: string): void {
-    this.logger.error(message, trace ? new Error(trace) : undefined, context ? { context } : undefined)
+    this.logger.error(
+      message,
+      trace ? new Error(trace) : undefined,
+      context ? { context } : undefined,
+    );
   }
 
   warn(message: string, context?: string): void {
-    this.logger.warn(message, context ? { context } : undefined)
+    this.logger.warn(message, context ? { context } : undefined);
   }
 
   debug(message: string, context?: string): void {
-    this.logger.debug(message, context ? { context } : undefined)
+    this.logger.debug(message, context ? { context } : undefined);
   }
 
   verbose(message: string, context?: string): void {
-    this.logger.verbose(message, context ? { context } : undefined)
+    this.logger.verbose(message, context ? { context } : undefined);
   }
 
   /**
@@ -47,6 +51,6 @@ export class ForgeLoggerService implements LoggerService {
    * 요청 컨텍스트가 포함된 자식 로거를 얻을 수 있게 한다.
    */
   withContext(context: Partial<RequestContext>): ForgeLogger {
-    return this.logger.withContext(context)
+    return this.logger.withContext(context);
   }
 }

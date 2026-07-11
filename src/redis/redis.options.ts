@@ -7,29 +7,29 @@
  * 이름은 사용자가 클로저로 직접 전달한다 (예: `hits.labels({ cache: 'user_profile' }).inc()`).
  */
 export interface CacheObserver {
-  onHit(): void
-  onMiss(): void
+  onHit(): void;
+  onMiss(): void;
 }
 
 export interface RedisOptions {
-  host?: string
-  port?: number
-  password?: string
-  db?: number
-  keyPrefix?: string
-  tls?: boolean
-  connectTimeout?: number
-  maxRetriesPerRequest?: number
+  host?: string;
+  port?: number;
+  password?: string;
+  db?: number;
+  keyPrefix?: string;
+  tls?: boolean;
+  connectTimeout?: number;
+  maxRetriesPerRequest?: number;
   /**
    * @description hit/miss 이벤트 수신자. 지정하면 `getOrSet`/`cGetOrSet` 호출 시
    * 결과에 따라 `onHit`/`onMiss`가 동기적으로 호출된다. 생략하면 기존 동작과 동일하다.
    */
-  observer?: CacheObserver
+  observer?: CacheObserver;
   /**
    * @description 활성화하면 동일 키에 대한 동시 cache miss 시 `fetchFn`을 1번만 실행하고
    * 나머지 요청은 그 결과를 공유한다 (thundering herd 방지). 단일 프로세스 범위의 인메모리
    * 중복 제거이므로 멀티 프로세스 환경에서는 별도로 `lock`/`unlock`을 조합해야 한다.
    * 기본값은 `false`이며, 비활성화 시 기존 동작과 완전히 동일하다.
    */
-  singleflight?: boolean
+  singleflight?: boolean;
 }
