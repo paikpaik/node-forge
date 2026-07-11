@@ -1,15 +1,15 @@
-import axios from 'axios'
-import type { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
-import type { HttpOptions } from './http.options'
-import type { ForgeLogger } from '../logger'
-import type { ForgeMetrics } from '../metrics'
+import axios from "axios";
+import type { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
+import type { HttpOptions } from "./http.options";
+import type { ForgeLogger } from "../logger";
+import type { ForgeMetrics } from "../metrics";
 
 function parseHost(url?: string): string {
-  if (!url) return 'unknown'
+  if (!url) return "unknown";
   try {
-    return new URL(url).host
+    return new URL(url).host;
   } catch {
-    return 'unknown'
+    return "unknown";
   }
 }
 
@@ -20,106 +20,110 @@ function parseHost(url?: string): string {
  * `AxiosResponse`가 아니라 `response.data`만 반환해 호출부 코드를 단순하게 만든다.
  */
 export class ForgeHttpClient {
-  private readonly client: AxiosInstance
+  private readonly client: AxiosInstance;
 
   constructor(options: HttpOptions = {}) {
     this.client = axios.create({
       baseURL: options.baseURL,
       timeout: options.timeout ?? 10_000,
       headers: options.headers,
-    })
+    });
 
-    const retries = options.retries ?? 0
+    const retries = options.retries ?? 0;
     if (retries > 0) {
-      this.setupRetry(retries, options.retryDelay ?? 300)
+      this.setupRetry(retries, options.retryDelay ?? 300);
     }
 
     if (options.logger) {
-      this.setupLogging(options.logger)
+      this.setupLogging(options.logger);
     }
 
     if (options.metrics) {
-      this.setupMetrics(options.metrics)
+      this.setupMetrics(options.metrics);
     }
   }
 
   private setupRetry(retries: number, retryDelay: number): void {
     this.client.interceptors.response.use(undefined, async (error) => {
-      const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number }
-      if (!config) return Promise.reject(error)
+      const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
+      if (!config) return Promise.reject(error);
 
-      config._retryCount = (config._retryCount ?? 0) + 1
+      config._retryCount = (config._retryCount ?? 0) + 1;
       if (config._retryCount <= retries) {
-        await new Promise((resolve) => setTimeout(resolve, retryDelay * config._retryCount!))
-        return this.client.request(config)
+        await new Promise((resolve) => setTimeout(resolve, retryDelay * config._retryCount!));
+        return this.client.request(config);
       }
 
-      return Promise.reject(error)
-    })
+      return Promise.reject(error);
+    });
   }
 
   private setupMetrics(metrics: ForgeMetrics): void {
     const requestsTotal = metrics.counter({
-      name: 'http_outbound_requests_total',
-      help: 'Total number of outbound HTTP requests',
-      labelNames: ['method', 'host', 'status'],
-    })
+      name: "http_outbound_requests_total",
+      help: "Total number of outbound HTTP requests",
+      labelNames: ["method", "host", "status"],
+    });
     const requestDuration = metrics.histogram({
-      name: 'http_outbound_request_duration_seconds',
-      help: 'Outbound HTTP request duration in seconds',
-      labelNames: ['method', 'host', 'status'],
+      name: "http_outbound_request_duration_seconds",
+      help: "Outbound HTTP request duration in seconds",
+      labelNames: ["method", "host", "status"],
       buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
-    })
+    });
 
     this.client.interceptors.request.use((config) => {
-      (config as InternalAxiosRequestConfig & { _metricsStart?: number })._metricsStart = Date.now()
-      return config
-    })
+      (config as InternalAxiosRequestConfig & { _metricsStart?: number })._metricsStart =
+        Date.now();
+      return config;
+    });
 
     this.client.interceptors.response.use(
       (response) => {
-        const cfg = response.config as InternalAxiosRequestConfig & { _metricsStart?: number }
-        const duration = cfg._metricsStart ? (Date.now() - cfg._metricsStart) / 1000 : 0
+        const cfg = response.config as InternalAxiosRequestConfig & { _metricsStart?: number };
+        const duration = cfg._metricsStart ? (Date.now() - cfg._metricsStart) / 1000 : 0;
         const labels = {
-          method: cfg.method?.toUpperCase() ?? 'UNKNOWN',
+          method: cfg.method?.toUpperCase() ?? "UNKNOWN",
           host: parseHost(cfg.baseURL ?? cfg.url),
           status: String(response.status),
-        }
-        requestsTotal.labels(labels).inc()
-        requestDuration.labels(labels).observe(duration)
-        return response
+        };
+        requestsTotal.labels(labels).inc();
+        requestDuration.labels(labels).observe(duration);
+        return response;
       },
       (error) => {
-        const cfg = (error.config ?? {}) as InternalAxiosRequestConfig & { _metricsStart?: number }
-        const duration = cfg._metricsStart ? (Date.now() - cfg._metricsStart) / 1000 : 0
+        const cfg = (error.config ?? {}) as InternalAxiosRequestConfig & { _metricsStart?: number };
+        const duration = cfg._metricsStart ? (Date.now() - cfg._metricsStart) / 1000 : 0;
         const labels = {
-          method: cfg.method?.toUpperCase() ?? 'UNKNOWN',
+          method: cfg.method?.toUpperCase() ?? "UNKNOWN",
           host: parseHost(cfg.baseURL ?? cfg.url),
           status: String((error.response as { status?: number } | undefined)?.status ?? 0),
-        }
-        requestsTotal.labels(labels).inc()
-        requestDuration.labels(labels).observe(duration)
-        return Promise.reject(error)
+        };
+        requestsTotal.labels(labels).inc();
+        requestDuration.labels(labels).observe(duration);
+        return Promise.reject(error);
       },
-    )
+    );
   }
 
   private setupLogging(logger: ForgeLogger): void {
     this.client.interceptors.request.use((config) => {
-      logger.info('HTTP 요청', { method: config.method?.toUpperCase(), url: config.url })
-      return config
-    })
+      logger.info("HTTP 요청", { method: config.method?.toUpperCase(), url: config.url });
+      return config;
+    });
 
     this.client.interceptors.response.use(
       (response) => {
-        logger.info('HTTP 응답', { status: response.status, url: response.config.url })
-        return response
+        logger.info("HTTP 응답", { status: response.status, url: response.config.url });
+        return response;
       },
       (error) => {
-        logger.error('HTTP 오류', error, { url: error.config?.url, status: error.response?.status })
-        return Promise.reject(error)
+        logger.error("HTTP 오류", error, {
+          url: error.config?.url,
+          status: error.response?.status,
+        });
+        return Promise.reject(error);
       },
-    )
+    );
   }
 
   /**
@@ -127,28 +131,28 @@ export class ForgeHttpClient {
    * 나머지 verb 메서드(`post`/`put`/`patch`/`delete`)도 동일한 규칙으로 동작한다.
    */
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.get<T>(url, config)
-    return response.data
+    const response = await this.client.get<T>(url, config);
+    return response.data;
   }
 
   async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.post<T>(url, data, config)
-    return response.data
+    const response = await this.client.post<T>(url, data, config);
+    return response.data;
   }
 
   async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.put<T>(url, data, config)
-    return response.data
+    const response = await this.client.put<T>(url, data, config);
+    return response.data;
   }
 
   async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.patch<T>(url, data, config)
-    return response.data
+    const response = await this.client.patch<T>(url, data, config);
+    return response.data;
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.delete<T>(url, config)
-    return response.data
+    const response = await this.client.delete<T>(url, config);
+    return response.data;
   }
 
   /**
@@ -156,7 +160,7 @@ export class ForgeHttpClient {
    * 제공하지 않는 axios 고유 기능(인터셉터 추가, 파일 업로드 설정 등)이 필요할 때 사용한다.
    */
   getClient(): AxiosInstance {
-    return this.client
+    return this.client;
   }
 }
 
@@ -165,5 +169,5 @@ export class ForgeHttpClient {
  * 싶을 때 사용한다 (동작은 `new ForgeHttpClient(options)`와 동일).
  */
 export function createHttpClient(options?: HttpOptions): ForgeHttpClient {
-  return new ForgeHttpClient(options)
+  return new ForgeHttpClient(options);
 }

@@ -1,13 +1,13 @@
-import { Module, Global } from '@nestjs/common'
-import type { DynamicModule, FactoryProvider, ModuleMetadata } from '@nestjs/common'
-import { ForgeMetrics } from '../metrics'
-import type { MetricsOptions } from '../metrics'
-import { MetricsController } from './metrics.controller'
-import { METRICS_INSTANCE, METRICS_OPTIONS } from './metrics.constants'
+import { Module, Global } from "@nestjs/common";
+import type { DynamicModule, FactoryProvider, ModuleMetadata } from "@nestjs/common";
+import { ForgeMetrics } from "../metrics";
+import type { MetricsOptions } from "../metrics";
+import { MetricsController } from "./metrics.controller";
+import { METRICS_INSTANCE, METRICS_OPTIONS } from "./metrics.constants";
 
-export interface MetricsAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
-  useFactory: (...args: unknown[]) => MetricsOptions | Promise<MetricsOptions>
-  inject?: FactoryProvider['inject']
+export interface MetricsAsyncOptions extends Pick<ModuleMetadata, "imports"> {
+  useFactory: (...args: unknown[]) => MetricsOptions | Promise<MetricsOptions>;
+  inject?: FactoryProvider["inject"];
 }
 
 /**
@@ -34,7 +34,7 @@ export class MetricsModule {
         },
       ],
       exports: [METRICS_INSTANCE],
-    }
+    };
   }
 
   /**
@@ -59,6 +59,6 @@ export class MetricsModule {
         },
       ],
       exports: [METRICS_INSTANCE],
-    }
+    };
   }
 }

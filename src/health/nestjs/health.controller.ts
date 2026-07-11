@@ -1,7 +1,7 @@
-import { Controller, Get, HttpException, HttpStatus, Inject } from '@nestjs/common'
-import { checkHealth } from '../health'
-import type { HealthChecker, HealthReport } from '../health'
-import { HEALTH_CHECKERS } from './health.constants'
+import { Controller, Get, HttpException, HttpStatus, Inject } from "@nestjs/common";
+import { checkHealth } from "../health";
+import type { HealthChecker, HealthReport } from "../health";
+import { HEALTH_CHECKERS } from "./health.constants";
 
 /**
  * @description `GET /health` 엔드포인트를 제공하는 컨트롤러. `HealthModule.forRoot`에 등록한
@@ -12,14 +12,14 @@ import { HEALTH_CHECKERS } from './health.constants'
 export class HealthController {
   constructor(@Inject(HEALTH_CHECKERS) private readonly checkers: Record<string, HealthChecker>) {}
 
-  @Get('health')
+  @Get("health")
   async check(): Promise<HealthReport> {
-    const report = await checkHealth(this.checkers)
+    const report = await checkHealth(this.checkers);
 
-    if (report.status === 'error') {
-      throw new HttpException(report, HttpStatus.SERVICE_UNAVAILABLE)
+    if (report.status === "error") {
+      throw new HttpException(report, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    return report
+    return report;
   }
 }

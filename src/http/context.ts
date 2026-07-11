@@ -1,13 +1,13 @@
-import type { RequestContext } from '../core'
-import { buildTraceparent } from '../core'
+import type { RequestContext } from "../core";
+import { buildTraceparent } from "../core";
 
 export interface TraceHeaderNames {
-  traceId?: string
-  requestId?: string
+  traceId?: string;
+  requestId?: string;
 }
 
-const DEFAULT_TRACE_ID_HEADER = 'x-trace-id'
-const DEFAULT_REQUEST_ID_HEADER = 'x-request-id'
+const DEFAULT_TRACE_ID_HEADER = "x-trace-id";
+const DEFAULT_REQUEST_ID_HEADER = "x-request-id";
 
 /**
  * @description 현재 요청의 `traceId`/`requestId`를 아웃바운드 HTTP 요청 헤더로 변환한다.
@@ -17,19 +17,19 @@ const DEFAULT_REQUEST_ID_HEADER = 'x-request-id'
  * `context`에 값이 없는 필드는 결과 객체에서 제외되며, `headerNames`로 헤더 이름을 커스터마이즈할 수 있다.
  */
 export function buildTraceHeaders(
-  context: Partial<Pick<RequestContext, 'traceId' | 'requestId'>>,
+  context: Partial<Pick<RequestContext, "traceId" | "requestId">>,
   headerNames?: TraceHeaderNames,
 ): Record<string, string> {
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = {};
 
   if (context.traceId) {
-    headers[headerNames?.traceId ?? DEFAULT_TRACE_ID_HEADER] = context.traceId
+    headers[headerNames?.traceId ?? DEFAULT_TRACE_ID_HEADER] = context.traceId;
   }
   if (context.requestId) {
-    headers[headerNames?.requestId ?? DEFAULT_REQUEST_ID_HEADER] = context.requestId
+    headers[headerNames?.requestId ?? DEFAULT_REQUEST_ID_HEADER] = context.requestId;
   }
 
-  return headers
+  return headers;
 }
 
 /**
@@ -40,9 +40,9 @@ export function buildTraceHeaders(
  * 생략하면 랜덤 spanId가 자동 생성된다. `buildTraceHeaders`와 spread로 조합해 두 포맷을 동시에 전송할 수 있다.
  */
 export function buildTraceparentHeader(
-  context: Partial<Pick<RequestContext, 'traceId'>>,
+  context: Partial<Pick<RequestContext, "traceId">>,
   spanId?: string,
 ): Record<string, string> {
-  if (!context.traceId) return {}
-  return { traceparent: buildTraceparent(context.traceId, spanId) }
+  if (!context.traceId) return {};
+  return { traceparent: buildTraceparent(context.traceId, spanId) };
 }

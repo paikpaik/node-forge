@@ -1,7 +1,7 @@
-import { DataSource } from 'typeorm'
-import type { DataSourceOptions } from 'typeorm'
+import { DataSource } from "typeorm";
+import type { DataSourceOptions } from "typeorm";
 
-export type DatabaseOptions = DataSourceOptions
+export type DatabaseOptions = DataSourceOptions;
 
 /**
  * @description TypeORM `DataSource`를 생성하는 팩토리. `options`는 TypeORM의
@@ -9,7 +9,7 @@ export type DatabaseOptions = DataSourceOptions
  * 그대로 재사용할 수 있다 (단, `initialize()`는 직접 호출해야 한다).
  */
 export function createDataSource(options: DatabaseOptions): DataSource {
-  return new DataSource(options)
+  return new DataSource(options);
 }
 
 /**
@@ -19,7 +19,7 @@ export function createDataSource(options: DatabaseOptions): DataSource {
  */
 export async function runMigrations(dataSource: DataSource): Promise<void> {
   if (!dataSource.isInitialized) {
-    await dataSource.initialize()
+    await dataSource.initialize();
   }
-  await dataSource.runMigrations()
+  await dataSource.runMigrations();
 }

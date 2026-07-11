@@ -1,6 +1,6 @@
-import pino from 'pino'
-import type { LoggerOptions } from './logger.options'
-import type { RequestContext } from '../core'
+import pino from "pino";
+import type { LoggerOptions } from "./logger.options";
+import type { RequestContext } from "../core";
 
 /**
  * @description `pino`를 감싼 로거. NestJS의 `LoggerService`와 Fastify의 로깅 인터페이스를
@@ -16,18 +16,18 @@ export class ForgeLogger {
    */
   static create(options: LoggerOptions = {}): ForgeLogger {
     const instance = pino({
-      level: options.level ?? 'info',
+      level: options.level ?? "info",
       name: options.name,
       base: options.base ?? {},
       redact: options.redact,
       ...(options.pretty && {
         transport: {
-          target: 'pino-pretty',
-          options: { colorize: true, translateTime: 'SYS:standard' },
+          target: "pino-pretty",
+          options: { colorize: true, translateTime: "SYS:standard" },
         },
       }),
-    })
-    return new ForgeLogger(instance)
+    });
+    return new ForgeLogger(instance);
   }
 
   /**
@@ -36,7 +36,7 @@ export class ForgeLogger {
    * 요청 단위로 로그를 추적·필터링할 때 매 호출마다 컨텍스트를 넘기지 않아도 된다.
    */
   withContext(context: Partial<RequestContext> & Record<string, unknown>): ForgeLogger {
-    return new ForgeLogger(this._pino.child(context))
+    return new ForgeLogger(this._pino.child(context));
   }
 
   /**
@@ -44,15 +44,15 @@ export class ForgeLogger {
    * 요구하는 `log` 메서드 시그니처를 맞추기 위해 제공한다.
    */
   log(msg: string, data?: Record<string, unknown>): void {
-    data ? this._pino.info(data, msg) : this._pino.info(msg)
+    data ? this._pino.info(data, msg) : this._pino.info(msg);
   }
 
   info(msg: string, data?: Record<string, unknown>): void {
-    data ? this._pino.info(data, msg) : this._pino.info(msg)
+    data ? this._pino.info(data, msg) : this._pino.info(msg);
   }
 
   warn(msg: string, data?: Record<string, unknown>): void {
-    data ? this._pino.warn(data, msg) : this._pino.warn(msg)
+    data ? this._pino.warn(data, msg) : this._pino.warn(msg);
   }
 
   /**
@@ -60,11 +60,11 @@ export class ForgeLogger {
    * (스택 트레이스 등)을 그대로 활용할 수 있으며, 추가 `data`는 `err`와 함께 병합된다.
    */
   error(msg: string, error?: unknown, data?: Record<string, unknown>): void {
-    this._pino.error({ err: error, ...data }, msg)
+    this._pino.error({ err: error, ...data }, msg);
   }
 
   debug(msg: string, data?: Record<string, unknown>): void {
-    data ? this._pino.debug(data, msg) : this._pino.debug(msg)
+    data ? this._pino.debug(data, msg) : this._pino.debug(msg);
   }
 
   /**
@@ -72,7 +72,7 @@ export class ForgeLogger {
    * pino에는 `verbose` 레벨이 없어 가장 낮은 `trace`로 대응시킨 것이다.
    */
   verbose(msg: string, data?: Record<string, unknown>): void {
-    data ? this._pino.trace(data, msg) : this._pino.trace(msg)
+    data ? this._pino.trace(data, msg) : this._pino.trace(msg);
   }
 }
 
@@ -81,5 +81,5 @@ export class ForgeLogger {
  * 함수 호출 스타일로 로거를 생성하고 싶을 때 사용한다 (동작은 완전히 동일).
  */
 export function createLogger(options?: LoggerOptions): ForgeLogger {
-  return ForgeLogger.create(options)
+  return ForgeLogger.create(options);
 }

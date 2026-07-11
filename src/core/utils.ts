@@ -3,11 +3,11 @@
  * 응답 직렬화 시 비밀번호·내부 필드 등 민감한 값을 제거할 때 사용한다.
  */
 export function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
-  const result = { ...obj }
+  const result = { ...obj };
   for (const key of keys) {
-    delete result[key]
+    delete result[key];
   }
-  return result as Omit<T, K>
+  return result as Omit<T, K>;
 }
 
 /**
@@ -16,13 +16,13 @@ export function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): Om
  * 객체에 실제로 존재하는 키만 결과에 포함된다.
  */
 export function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
-  const result = {} as Pick<T, K>
+  const result = {} as Pick<T, K>;
   for (const key of keys) {
     if (key in obj) {
-      result[key] = obj[key]
+      result[key] = obj[key];
     }
   }
-  return result
+  return result;
 }
 
 /**
@@ -31,12 +31,12 @@ export function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pi
  * size가 0 이하이면 에러를 던진다.
  */
 export function chunk<T>(arr: T[], size: number): T[][] {
-  if (size <= 0) throw new Error(`chunk size must be greater than 0, got ${size}`)
-  const result: T[][] = []
+  if (size <= 0) throw new Error(`chunk size must be greater than 0, got ${size}`);
+  const result: T[][] = [];
   for (let i = 0; i < arr.length; i += size) {
-    result.push(arr.slice(i, i + size))
+    result.push(arr.slice(i, i + size));
   }
-  return result
+  return result;
 }
 
 /**
@@ -50,13 +50,13 @@ export function groupBy<T, K extends string | number | symbol>(
 ): Record<K, T[]> {
   return arr.reduce(
     (acc, item) => {
-      const key = keyFn(item)
-      if (!acc[key]) acc[key] = []
-      acc[key].push(item)
-      return acc
+      const key = keyFn(item);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
     },
     {} as Record<K, T[]>,
-  )
+  );
 }
 
 /**
@@ -69,11 +69,11 @@ export function keyBy<T, K extends string | number | symbol>(
 ): Record<K, T> {
   return arr.reduce(
     (acc, item) => {
-      acc[keyFn(item)] = item
-      return acc
+      acc[keyFn(item)] = item;
+      return acc;
     },
     {} as Record<K, T>,
-  )
+  );
 }
 
 /**
@@ -81,7 +81,7 @@ export function keyBy<T, K extends string | number | symbol>(
  * `arr.filter(Boolean)`과 달리 타입이 정확히 `T[]`로 추론된다.
  */
 export function compact<T>(arr: (T | null | undefined)[]): T[] {
-  return arr.filter((v): v is T => v !== null && v !== undefined)
+  return arr.filter((v): v is T => v !== null && v !== undefined);
 }
 
 /**
@@ -93,28 +93,28 @@ export function deepMerge<T extends Record<string, unknown>>(
   target: T,
   ...sources: Partial<T>[]
 ): T {
-  const result = { ...target }
+  const result = { ...target };
   for (const source of sources) {
     for (const key in source) {
-      const sourceVal = source[key]
-      const targetVal = result[key]
+      const sourceVal = source[key];
+      const targetVal = result[key];
       if (
         sourceVal !== null &&
         sourceVal !== undefined &&
-        typeof sourceVal === 'object' &&
+        typeof sourceVal === "object" &&
         !Array.isArray(sourceVal) &&
-        typeof targetVal === 'object' &&
+        typeof targetVal === "object" &&
         targetVal !== null &&
         !Array.isArray(targetVal)
       ) {
         result[key] = deepMerge(
           targetVal as Record<string, unknown>,
           sourceVal as Record<string, unknown>,
-        ) as T[typeof key]
+        ) as T[typeof key];
       } else if (sourceVal !== undefined) {
-        result[key] = sourceVal as T[typeof key]
+        result[key] = sourceVal as T[typeof key];
       }
     }
   }
-  return result
+  return result;
 }

@@ -1,12 +1,12 @@
-import EventEmitter2 from 'eventemitter2'
+import EventEmitter2 from "eventemitter2";
 
 export interface EventBusOptions {
-  wildcard?: boolean
-  delimiter?: string
-  maxListeners?: number
+  wildcard?: boolean;
+  delimiter?: string;
+  maxListeners?: number;
 }
 
-export type EventListener = (...args: unknown[]) => void | Promise<void>
+export type EventListener = (...args: unknown[]) => void | Promise<void>;
 
 /**
  * @description `eventemitter2`를 감싼 이벤트 버스. 기본적으로 `wildcard: true`,
@@ -14,14 +14,14 @@ export type EventListener = (...args: unknown[]) => void | Promise<void>
  * (모듈 간 직접 의존 없이 도메인 이벤트를 주고받는 느슨한 결합 구조에 사용한다).
  */
 export class ForgeEventBus {
-  private readonly emitter: EventEmitter2
+  private readonly emitter: EventEmitter2;
 
   constructor(options: EventBusOptions = {}) {
     this.emitter = new EventEmitter2({
       wildcard: options.wildcard ?? true,
-      delimiter: options.delimiter ?? '.',
+      delimiter: options.delimiter ?? ".",
       maxListeners: options.maxListeners ?? 20,
-    })
+    });
   }
 
   /**
@@ -29,7 +29,7 @@ export class ForgeEventBus {
    * 리스너가 비동기 함수여도 결과를 기다리지 않으므로, 완료를 보장해야 하면 `emitAsync`를 사용한다.
    */
   emit(event: string, ...args: unknown[]): boolean {
-    return this.emitter.emit(event, ...args)
+    return this.emitter.emit(event, ...args);
   }
 
   /**
@@ -37,15 +37,15 @@ export class ForgeEventBus {
    * 각 리스너의 반환값을 배열로 모아 반환하며, 발행 이후 동작이 리스너 완료에 의존할 때 사용한다.
    */
   async emitAsync(event: string, ...args: unknown[]): Promise<unknown[]> {
-    return this.emitter.emitAsync(event, ...args)
+    return this.emitter.emitAsync(event, ...args);
   }
 
   /**
    * @description 이벤트 리스너를 등록한다. 메서드 체이닝을 위해 `this`를 반환한다.
    */
   on(event: string, listener: EventListener): this {
-    this.emitter.on(event, listener as (...args: unknown[]) => void)
-    return this
+    this.emitter.on(event, listener as (...args: unknown[]) => void);
+    return this;
   }
 
   /**
@@ -53,8 +53,8 @@ export class ForgeEventBus {
    * 자동으로 해제되며, 초기화 작업처럼 1회성 트리거가 필요한 곳에 사용한다.
    */
   once(event: string, listener: EventListener): this {
-    this.emitter.once(event, listener as (...args: unknown[]) => void)
-    return this
+    this.emitter.once(event, listener as (...args: unknown[]) => void);
+    return this;
   }
 
   /**
@@ -62,8 +62,8 @@ export class ForgeEventBus {
    * 정상적으로 해제된다 (익명 함수로 등록하면 해제할 수 없으므로 주의).
    */
   off(event: string, listener: EventListener): this {
-    this.emitter.off(event, listener as (...args: unknown[]) => void)
-    return this
+    this.emitter.off(event, listener as (...args: unknown[]) => void);
+    return this;
   }
 
   /**
@@ -71,12 +71,12 @@ export class ForgeEventBus {
    * 모듈 종료/재초기화 시 리스너 누수를 막기 위한 정리 용도로 사용한다.
    */
   removeAllListeners(event?: string): this {
-    this.emitter.removeAllListeners(event)
-    return this
+    this.emitter.removeAllListeners(event);
+    return this;
   }
 
   listenerCount(event: string): number {
-    return this.emitter.listenerCount(event)
+    return this.emitter.listenerCount(event);
   }
 
   /**
@@ -84,7 +84,7 @@ export class ForgeEventBus {
    * 감싸지 않은 고급 기능(예: `onAny`, namespaces 조회 등)이 필요할 때 사용한다.
    */
   getEmitter(): EventEmitter2 {
-    return this.emitter
+    return this.emitter;
   }
 }
 
@@ -93,5 +93,5 @@ export class ForgeEventBus {
  * 싶을 때 사용한다 (동작은 `new ForgeEventBus(options)`와 동일).
  */
 export function createEventBus(options?: EventBusOptions): ForgeEventBus {
-  return new ForgeEventBus(options)
+  return new ForgeEventBus(options);
 }

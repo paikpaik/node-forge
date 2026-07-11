@@ -1,1 +1,1 @@
-export * from './http.plugin'
+export * from "./http.plugin";

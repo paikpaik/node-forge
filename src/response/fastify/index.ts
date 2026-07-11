@@ -1,1 +1,1 @@
-export * from './response.plugin'
+export * from "./response.plugin";

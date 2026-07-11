@@ -1,8 +1,8 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common'
-import { Observable } from 'rxjs'
-import { map } from 'rxjs/operators'
-import { ok } from '../response'
-import type { ApiResponse } from '../response'
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from "@nestjs/common";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
+import { ok } from "../response";
+import type { ApiResponse } from "../response";
 
 /**
  * @description 컨트롤러가 반환한 값을 가로채 자동으로 `ok(data)`로 감싸는 전역 인터셉터.
@@ -13,6 +13,6 @@ import type { ApiResponse } from '../response'
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponse<T>> {
   intercept(_context: ExecutionContext, next: CallHandler<T>): Observable<ApiResponse<T>> {
-    return next.handle().pipe(map((data) => ok(data)))
+    return next.handle().pipe(map((data) => ok(data)));
   }
 }

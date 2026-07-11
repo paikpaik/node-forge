@@ -1,12 +1,12 @@
-import fp from 'fastify-plugin'
-import type { FastifyPluginAsync } from 'fastify'
-import type { DataSource } from 'typeorm'
-import { createDataSource } from '../database'
-import type { DatabaseOptions } from '../database'
+import fp from "fastify-plugin";
+import type { FastifyPluginAsync } from "fastify";
+import type { DataSource } from "typeorm";
+import { createDataSource } from "../database";
+import type { DatabaseOptions } from "../database";
 
-declare module 'fastify' {
+declare module "fastify" {
   interface FastifyInstance {
-    db: DataSource
+    db: DataSource;
   }
 }
 
@@ -16,22 +16,22 @@ declare module 'fastify' {
  * (NestJS의 `DatabaseModule.forRoot`와 동일한 라이프사이클 관리를 Fastify 방식으로 제공).
  */
 const databasePlugin: FastifyPluginAsync<DatabaseOptions> = async (fastify, options) => {
-  const dataSource = createDataSource(options)
-  await dataSource.initialize()
+  const dataSource = createDataSource(options);
+  await dataSource.initialize();
 
-  fastify.decorate('db', dataSource)
+  fastify.decorate("db", dataSource);
 
-  fastify.addHook('onClose', async () => {
+  fastify.addHook("onClose", async () => {
     if (dataSource.isInitialized) {
-      await dataSource.destroy()
+      await dataSource.destroy();
     }
-  })
-}
+  });
+};
 
 /**
  * @description `databasePlugin`을 `fastify-plugin`으로 감싸 캡슐화를 해제한 플러그인.
  * `fastify.register(fastifyDatabase, options)`로 등록하면 `fastify.db`를 즉시 사용할 수 있다.
  */
 export const fastifyDatabase = fp(databasePlugin, {
-  name: '@paikpaik/node-forge/database',
-})
+  name: "@paikpaik/node-forge/database",
+});

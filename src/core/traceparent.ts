@@ -1,17 +1,17 @@
-import { randomBytes } from 'node:crypto'
+import { randomBytes } from "node:crypto";
 
 export interface ParsedTraceparent {
   /** W3C traceId — 32-char lowercase hex (16 bytes) */
-  traceId: string
+  traceId: string;
   /** 요청을 보낸 쪽의 span ID — 16-char lowercase hex (8 bytes) */
-  parentId: string
+  parentId: string;
   /** trace-flags 최하위 비트: true면 수집 대상(sampled) */
-  sampled: boolean
+  sampled: boolean;
 }
 
-const TRACEPARENT_REGEX = /^[\da-f]{2}-([\da-f]{32})-([\da-f]{16})-([\da-f]{2})$/i
-const ALL_ZEROS_32 = '0'.repeat(32)
-const ALL_ZEROS_16 = '0'.repeat(16)
+const TRACEPARENT_REGEX = /^[\da-f]{2}-([\da-f]{32})-([\da-f]{16})-([\da-f]{2})$/i;
+const ALL_ZEROS_32 = "0".repeat(32);
+const ALL_ZEROS_16 = "0".repeat(16);
 
 /**
  * @description W3C Trace Context `traceparent` 헤더 값을 파싱한다.
@@ -20,20 +20,20 @@ const ALL_ZEROS_16 = '0'.repeat(16)
  * "ignore and continue" 원칙에 따라 호출부에서 조용히 fallback 처리한다.
  */
 export function parseTraceparent(header: string): ParsedTraceparent | null {
-  const match = header.trim().match(TRACEPARENT_REGEX)
-  if (!match) return null
+  const match = header.trim().match(TRACEPARENT_REGEX);
+  if (!match) return null;
 
-  const [, traceId, parentId, flags] = match
-  const traceIdLower = traceId.toLowerCase()
-  const parentIdLower = parentId.toLowerCase()
+  const [, traceId, parentId, flags] = match;
+  const traceIdLower = traceId.toLowerCase();
+  const parentIdLower = parentId.toLowerCase();
 
-  if (traceIdLower === ALL_ZEROS_32 || parentIdLower === ALL_ZEROS_16) return null
+  if (traceIdLower === ALL_ZEROS_32 || parentIdLower === ALL_ZEROS_16) return null;
 
   return {
     traceId: traceIdLower,
     parentId: parentIdLower,
     sampled: (parseInt(flags, 16) & 1) === 1,
-  }
+  };
 }
 
 /**
@@ -43,10 +43,10 @@ export function parseTraceparent(header: string): ParsedTraceparent | null {
  * active span의 spanId를 전달해 기존 추적 체인을 이어받을 수 있다.
  */
 export function buildTraceparent(traceId: string, spanId?: string, sampled = true): string {
-  const traceIdHex = traceId.replace(/-/g, '').toLowerCase().padEnd(32, '0').slice(0, 32)
+  const traceIdHex = traceId.replace(/-/g, "").toLowerCase().padEnd(32, "0").slice(0, 32);
   const spanIdHex = spanId
-    ? spanId.replace(/-/g, '').toLowerCase().padEnd(16, '0').slice(0, 16)
-    : randomBytes(8).toString('hex')
-  const flags = sampled ? '01' : '00'
-  return `00-${traceIdHex}-${spanIdHex}-${flags}`
+    ? spanId.replace(/-/g, "").toLowerCase().padEnd(16, "0").slice(0, 16)
+    : randomBytes(8).toString("hex");
+  const flags = sampled ? "01" : "00";
+  return `00-${traceIdHex}-${spanIdHex}-${flags}`;
 }

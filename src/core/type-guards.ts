@@ -4,28 +4,28 @@
  * 0, 빈 문자열, false 같은 falsy 값은 제거하지 않는다 (`filter(Boolean)`과 다름).
  */
 export function isNonNull<T>(value: T | null | undefined): value is T {
-  return value !== null && value !== undefined
+  return value !== null && value !== undefined;
 }
 
 /**
  * @description 값이 `string` 타입인지 검사한다.
  */
 export function isString(value: unknown): value is string {
-  return typeof value === 'string'
+  return typeof value === "string";
 }
 
 /**
  * @description 값이 `number` 타입인지 검사한다. `NaN`은 typeof가 'number'이므로 true를 반환한다.
  */
 export function isNumber(value: unknown): value is number {
-  return typeof value === 'number'
+  return typeof value === "number";
 }
 
 /**
  * @description 값이 `boolean` 타입인지 검사한다.
  */
 export function isBoolean(value: unknown): value is boolean {
-  return typeof value === 'boolean'
+  return typeof value === "boolean";
 }
 
 /**
@@ -33,14 +33,14 @@ export function isBoolean(value: unknown): value is boolean {
  * null, 배열, Date 등은 false를 반환한다.
  */
 export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
  * @description 값이 배열인지 검사한다.
  */
 export function isArray(value: unknown): value is unknown[] {
-  return Array.isArray(value)
+  return Array.isArray(value);
 }
 
 /**
@@ -49,8 +49,8 @@ export function isArray(value: unknown): value is unknown[] {
  */
 export function safeJsonParse<T = unknown>(str: string): T | null {
   try {
-    return JSON.parse(str) as T
+    return JSON.parse(str) as T;
   } catch {
-    return null
+    return null;
   }
 }

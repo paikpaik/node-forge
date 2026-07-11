@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto'
-import Redis from 'ioredis'
-import { ForgeError } from '../core/errors'
-import { sleep } from '../core/async'
-import type { CacheObserver, RedisOptions } from './redis.options'
+import { randomUUID } from "node:crypto";
+import Redis from "ioredis";
+import { ForgeError } from "../core/errors";
+import { sleep } from "../core/async";
+import type { CacheObserver, RedisOptions } from "./redis.options";
 
 const UNLOCK_SCRIPT = `
 if redis.call("GET", KEYS[1]) == ARGV[1] then
@@ -10,33 +10,33 @@ if redis.call("GET", KEYS[1]) == ARGV[1] then
 else
   return 0
 end
-`
+`;
 
 export interface WithLockOptions {
   /** 락 획득 실패 시 재시도 횟수. 기본값 0 (즉시 실패). */
-  retries?: number
+  retries?: number;
   /** 재시도 간격 ms. 기본값 50. */
-  retryDelay?: number
+  retryDelay?: number;
 }
 
 interface CachedItem<T> {
-  cachedAt: number
-  data: T
+  cachedAt: number;
+  data: T;
 }
 
 export class ForgeRedisClient {
-  private readonly client: Redis
-  private readonly observer?: CacheObserver
-  private readonly _singleflight: boolean
-  private readonly _inflight = new Map<string, Promise<unknown>>()
-  private _subscriber: Redis | null = null
-  private readonly _channels = new Map<string, (value: unknown) => void>()
+  private readonly client: Redis;
+  private readonly observer?: CacheObserver;
+  private readonly _singleflight: boolean;
+  private readonly _inflight = new Map<string, Promise<unknown>>();
+  private _subscriber: Redis | null = null;
+  private readonly _channels = new Map<string, (value: unknown) => void>();
 
   constructor(options: RedisOptions = {}) {
-    this.observer = options.observer
-    this._singleflight = options.singleflight ?? false
+    this.observer = options.observer;
+    this._singleflight = options.singleflight ?? false;
     this.client = new Redis({
-      host: options.host ?? 'localhost',
+      host: options.host ?? "localhost",
       port: options.port ?? 6379,
       password: options.password,
       db: options.db ?? 0,
@@ -46,41 +46,41 @@ export class ForgeRedisClient {
       retryStrategy: (times) => Math.min(times * 50, 2_000),
       lazyConnect: true,
       ...(options.tls && { tls: {} }),
-    })
+    });
   }
 
   // ── Singleflight ─────────────────────────────────────────────────────────
 
   private dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
-    if (!this._singleflight) return fn()
+    if (!this._singleflight) return fn();
 
-    const existing = this._inflight.get(key)
-    if (existing) return existing as Promise<T>
+    const existing = this._inflight.get(key);
+    if (existing) return existing as Promise<T>;
 
     const promise = fn().finally(() => {
-      this._inflight.delete(key)
-    })
-    this._inflight.set(key, promise)
-    return promise
+      this._inflight.delete(key);
+    });
+    this._inflight.set(key, promise);
+    return promise;
   }
 
   // ── Serialization ─────────────────────────────────────────────────────────
 
   private serialize<T>(value: T): string {
-    return JSON.stringify({ cachedAt: Date.now(), data: value })
+    return JSON.stringify({ cachedAt: Date.now(), data: value });
   }
 
   private deserialize<T>(raw: string | null): CachedItem<T | null> {
-    if (raw === null || raw === undefined) return { cachedAt: 0, data: null }
+    if (raw === null || raw === undefined) return { cachedAt: 0, data: null };
     try {
-      const parsed = JSON.parse(raw) as Record<string, unknown>
-      if ('cachedAt' in parsed && 'data' in parsed) {
-        return parsed as unknown as CachedItem<T>
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if ("cachedAt" in parsed && "data" in parsed) {
+        return parsed as unknown as CachedItem<T>;
       }
     } catch {
       // not a CachedItem — treat raw string as data
     }
-    return { cachedAt: 0, data: raw as unknown as T }
+    return { cachedAt: 0, data: raw as unknown as T };
   }
 
   // ── String ────────────────────────────────────────────────────────────────
@@ -90,8 +90,8 @@ export class ForgeRedisClient {
    * 자동으로 역직렬화해 data 부분만 반환한다. 키가 없으면 null을 반환한다.
    */
   async get<T>(key: string): Promise<T | null> {
-    const raw = await this.client.get(key)
-    return this.deserialize<T>(raw).data
+    const raw = await this.client.get(key);
+    return this.deserialize<T>(raw).data;
   }
 
   /**
@@ -100,15 +100,15 @@ export class ForgeRedisClient {
    * cGet/cGetOrSet 비교키 무효화 패턴과 함께 사용하려면 반드시 이 메서드로 저장해야 한다.
    */
   async set(key: string, value: unknown, expireSeconds?: number): Promise<void> {
-    const serialized = this.serialize(value)
+    const serialized = this.serialize(value);
     if (expireSeconds !== undefined) {
       if (expireSeconds > 0) {
-        await this.client.setex(key, expireSeconds, serialized)
+        await this.client.setex(key, expireSeconds, serialized);
       } else {
-        await this.client.del(key)
+        await this.client.del(key);
       }
     } else {
-      await this.client.set(key, serialized)
+      await this.client.set(key, serialized);
     }
   }
 
@@ -117,7 +117,7 @@ export class ForgeRedisClient {
    * 존재하지 않는 키는 무시한다.
    */
   async del(...keys: string[]): Promise<number> {
-    return this.client.del(...keys)
+    return this.client.del(...keys);
   }
 
   /**
@@ -125,7 +125,7 @@ export class ForgeRedisClient {
    * 같은 키를 여러 번 전달하면 중복 카운트된다.
    */
   async exists(...keys: string[]): Promise<number> {
-    return this.client.exists(...keys)
+    return this.client.exists(...keys);
   }
 
   /**
@@ -133,8 +133,8 @@ export class ForgeRedisClient {
    * 키가 존재하고 TTL이 설정되면 true, 키가 없으면 false를 반환한다.
    */
   async expire(key: string, seconds: number): Promise<boolean> {
-    const result = await this.client.expire(key, seconds)
-    return result === 1
+    const result = await this.client.expire(key, seconds);
+    return result === 1;
   }
 
   /**
@@ -142,7 +142,7 @@ export class ForgeRedisClient {
    * TTL이 없는 키는 -1, 존재하지 않는 키는 -2를 반환한다.
    */
   async ttl(key: string): Promise<number> {
-    return this.client.ttl(key)
+    return this.client.ttl(key);
   }
 
   /**
@@ -151,8 +151,8 @@ export class ForgeRedisClient {
    * "이벤트 기간에만 만료되던 데이터를 영구 보존으로 전환" 같은 상황에 사용한다.
    */
   async persist(key: string): Promise<boolean> {
-    const result = await this.client.persist(key)
-    return result === 1
+    const result = await this.client.persist(key);
+    return result === 1;
   }
 
   /**
@@ -161,27 +161,27 @@ export class ForgeRedisClient {
    * 빈 배열을 전달하면 Redis 호출 없이 빈 배열을 반환한다.
    */
   async mget<T>(keys: string[]): Promise<(T | null)[]> {
-    if (keys.length === 0) return []
-    const raws = await this.client.mget(...keys)
-    return raws.map((raw) => this.deserialize<T>(raw).data)
+    if (keys.length === 0) return [];
+    const raws = await this.client.mget(...keys);
+    return raws.map((raw) => this.deserialize<T>(raw).data);
   }
 
   // ── Cache-aside & 비교키 무효화 ──────────────────────────────────────────
 
   private revalidate<T>(key: string, fetchFn: () => Promise<T>, expireSeconds: number): Promise<T> {
-    const existing = this._inflight.get(key)
-    if (existing) return existing as Promise<T>
+    const existing = this._inflight.get(key);
+    if (existing) return existing as Promise<T>;
 
     const promise = fetchFn()
       .then(async (fresh) => {
-        await this.set(key, fresh, expireSeconds)
-        return fresh
+        await this.set(key, fresh, expireSeconds);
+        return fresh;
       })
       .finally(() => {
-        this._inflight.delete(key)
-      })
-    this._inflight.set(key, promise)
-    return promise
+        this._inflight.delete(key);
+      });
+    this._inflight.set(key, promise);
+    return promise;
   }
 
   /**
@@ -190,22 +190,18 @@ export class ForgeRedisClient {
    * 캐시에 TTL이 적용된다. `observer`가 설정된 경우 hit 시 `onHit`, miss 시 `onMiss`를
    * 동기적으로 호출하므로 `ForgeMetrics` 카운터를 연결해 히트율을 추적할 수 있다.
    */
-  async getOrSet<T>(
-    key: string,
-    fetchFn: () => Promise<T>,
-    expireSeconds?: number,
-  ): Promise<T> {
-    const cached = await this.get<T>(key)
+  async getOrSet<T>(key: string, fetchFn: () => Promise<T>, expireSeconds?: number): Promise<T> {
+    const cached = await this.get<T>(key);
     if (cached !== null) {
-      this.observer?.onHit()
-      return cached
+      this.observer?.onHit();
+      return cached;
     }
-    this.observer?.onMiss()
+    this.observer?.onMiss();
     return this.dedupe(key, async () => {
-      const fresh = await fetchFn()
-      await this.set(key, fresh, expireSeconds)
-      return fresh
-    })
+      const fresh = await fetchFn();
+      await this.set(key, fresh, expireSeconds);
+      return fresh;
+    });
   }
 
   /**
@@ -219,24 +215,24 @@ export class ForgeRedisClient {
     fetchFn: () => Promise<T>,
     options: { expireSeconds: number; staleAfter: number },
   ): Promise<T> {
-    const raw = await this.client.get(key)
-    const item = this.deserialize<T>(raw)
+    const raw = await this.client.get(key);
+    const item = this.deserialize<T>(raw);
 
     if (item.data !== null) {
-      const ageSeconds = (Date.now() - item.cachedAt) / 1000
+      const ageSeconds = (Date.now() - item.cachedAt) / 1000;
       if (ageSeconds < options.staleAfter) {
-        this.observer?.onHit()
-        return item.data
+        this.observer?.onHit();
+        return item.data;
       }
       // Stale: 즉시 반환 + 백그라운드 갱신
-      this.observer?.onMiss()
-      void this.revalidate(key, fetchFn, options.expireSeconds)
-      return item.data
+      this.observer?.onMiss();
+      void this.revalidate(key, fetchFn, options.expireSeconds);
+      return item.data;
     }
 
     // Expired/missing: blocking fetch
-    this.observer?.onMiss()
-    return this.revalidate(key, fetchFn, options.expireSeconds)
+    this.observer?.onMiss();
+    return this.revalidate(key, fetchFn, options.expireSeconds);
   }
 
   /**
@@ -245,11 +241,11 @@ export class ForgeRedisClient {
    * 비교키를 invalidate()로 갱신하는 것만으로 연결된 모든 캐시를 무효화할 수 있다.
    */
   async cGet<T>(key: string, compareKey: string): Promise<T | null> {
-    const raws = await this.client.mget(key, compareKey)
-    const item = this.deserialize<T>(raws[0])
-    const compare = this.deserialize<unknown>(raws[1])
-    if (item.data === null || item.cachedAt < compare.cachedAt) return null
-    return item.data
+    const raws = await this.client.mget(key, compareKey);
+    const item = this.deserialize<T>(raws[0]);
+    const compare = this.deserialize<unknown>(raws[1]);
+    if (item.data === null || item.cachedAt < compare.cachedAt) return null;
+    return item.data;
   }
 
   /**
@@ -264,17 +260,17 @@ export class ForgeRedisClient {
     fetchFn: () => Promise<T>,
     expireSeconds?: number,
   ): Promise<T> {
-    const cached = await this.cGet<T>(key, compareKey)
+    const cached = await this.cGet<T>(key, compareKey);
     if (cached !== null) {
-      this.observer?.onHit()
-      return cached
+      this.observer?.onHit();
+      return cached;
     }
-    this.observer?.onMiss()
+    this.observer?.onMiss();
     return this.dedupe(key, async () => {
-      const fresh = await fetchFn()
-      await this.set(key, fresh, expireSeconds)
-      return fresh
-    })
+      const fresh = await fetchFn();
+      await this.set(key, fresh, expireSeconds);
+      return fresh;
+    });
   }
 
   /**
@@ -283,7 +279,7 @@ export class ForgeRedisClient {
    * 실제 데이터 키를 건드리지 않아도 되므로 대량 무효화 비용이 O(1)이다.
    */
   async invalidate(compareKey: string): Promise<void> {
-    await this.set(compareKey, null)
+    await this.set(compareKey, null);
   }
 
   // ── 분산 락 ───────────────────────────────────────────────────────────────
@@ -294,9 +290,9 @@ export class ForgeRedisClient {
    * 스케줄러 중복 실행 방지, 동시 결제 방지 등 분산 환경의 상호 배제에 사용한다.
    */
   async lock(key: string, ttlSeconds: number): Promise<string | null> {
-    const token = randomUUID()
-    const result = await this.client.set(key, token, 'PX', ttlSeconds * 1000, 'NX')
-    return result === 'OK' ? token : null
+    const token = randomUUID();
+    const result = await this.client.set(key, token, "PX", ttlSeconds * 1000, "NX");
+    return result === "OK" ? token : null;
   }
 
   /**
@@ -306,8 +302,8 @@ export class ForgeRedisClient {
    * 토큰이 일치해 해제에 성공하면 true, 이미 만료되었거나 다른 프로세스의 락이면 false를 반환한다.
    */
   async unlock(key: string, token: string): Promise<boolean> {
-    const result = await this.client.eval(UNLOCK_SCRIPT, 1, key, token)
-    return result === 1
+    const result = await this.client.eval(UNLOCK_SCRIPT, 1, key, token);
+    return result === 1;
   }
 
   /**
@@ -321,24 +317,24 @@ export class ForgeRedisClient {
     fn: () => Promise<T>,
     options?: WithLockOptions,
   ): Promise<T> {
-    const retries = options?.retries ?? 0
-    const retryDelay = options?.retryDelay ?? 50
+    const retries = options?.retries ?? 0;
+    const retryDelay = options?.retryDelay ?? 50;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
-      const token = await this.lock(key, ttlSeconds)
+      const token = await this.lock(key, ttlSeconds);
       if (token !== null) {
         try {
-          return await fn()
+          return await fn();
         } finally {
-          await this.unlock(key, token)
+          await this.unlock(key, token);
         }
       }
       if (attempt < retries) {
-        await sleep(retryDelay)
+        await sleep(retryDelay);
       }
     }
 
-    throw new ForgeError('E9501', `Failed to acquire lock: ${key}`)
+    throw new ForgeError("E9501", `Failed to acquire lock: ${key}`);
   }
 
   // ── Rate Limiter ────────────────────────────────────────────────────────────
@@ -355,15 +351,15 @@ export class ForgeRedisClient {
     limit: number,
     windowSeconds: number,
   ): Promise<{ limited: boolean; remaining: number }> {
-    const pipeline = this.client.pipeline()
-    pipeline.incr(key)
-    pipeline.expire(key, windowSeconds, 'NX')
-    const results = await pipeline.exec()
-    const count = results?.[0]?.[1] as number
+    const pipeline = this.client.pipeline();
+    pipeline.incr(key);
+    pipeline.expire(key, windowSeconds, "NX");
+    const results = await pipeline.exec();
+    const count = results?.[0]?.[1] as number;
     return {
       limited: count > limit,
       remaining: Math.max(0, limit - count),
-    }
+    };
   }
 
   // ── 일괄 쓰기 / 안전한 키 검색 ──────────────────────────────────────────────
@@ -374,18 +370,18 @@ export class ForgeRedisClient {
    * expireSeconds를 전달하면 모든 엔트리에 동일한 TTL을 적용한다.
    */
   async mset(entries: Record<string, unknown>, expireSeconds?: number): Promise<void> {
-    const keys = Object.keys(entries)
-    if (keys.length === 0) return
-    const pipeline = this.client.pipeline()
+    const keys = Object.keys(entries);
+    if (keys.length === 0) return;
+    const pipeline = this.client.pipeline();
     for (const key of keys) {
-      const serialized = this.serialize(entries[key])
+      const serialized = this.serialize(entries[key]);
       if (expireSeconds !== undefined && expireSeconds > 0) {
-        pipeline.setex(key, expireSeconds, serialized)
+        pipeline.setex(key, expireSeconds, serialized);
       } else {
-        pipeline.set(key, serialized)
+        pipeline.set(key, serialized);
       }
     }
-    await pipeline.exec()
+    await pipeline.exec();
   }
 
   /**
@@ -395,14 +391,14 @@ export class ForgeRedisClient {
    * count는 한 번의 SCAN 호출에서 살펴볼 키 개수에 대한 힌트(기본 100)이며 정확한 반환 개수를 보장하지 않는다.
    */
   async scanKeys(pattern: string, count = 100): Promise<string[]> {
-    const keys: string[] = []
-    let cursor = '0'
+    const keys: string[] = [];
+    let cursor = "0";
     do {
-      const [nextCursor, found] = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', count)
-      keys.push(...found)
-      cursor = nextCursor
-    } while (cursor !== '0')
-    return keys
+      const [nextCursor, found] = await this.client.scan(cursor, "MATCH", pattern, "COUNT", count);
+      keys.push(...found);
+      cursor = nextCursor;
+    } while (cursor !== "0");
+    return keys;
   }
 
   // ── Counter ───────────────────────────────────────────────────────────────
@@ -412,7 +408,7 @@ export class ForgeRedisClient {
    * 키가 없으면 0으로 초기화한 뒤 증가한다. 조회수, 시도 횟수 등 카운터에 사용한다.
    */
   async incr(key: string): Promise<number> {
-    return this.client.incr(key)
+    return this.client.incr(key);
   }
 
   /**
@@ -420,7 +416,7 @@ export class ForgeRedisClient {
    * 키가 없으면 0으로 초기화한 뒤 감소한다.
    */
   async decr(key: string): Promise<number> {
-    return this.client.decr(key)
+    return this.client.decr(key);
   }
 
   /**
@@ -428,14 +424,14 @@ export class ForgeRedisClient {
    * 포인트 적립, 잔액 증가 등 임의 단위 증감에 사용한다.
    */
   async incrby(key: string, increment: number): Promise<number> {
-    return this.client.incrby(key, increment)
+    return this.client.incrby(key, increment);
   }
 
   /**
    * @description 키의 정수 값을 decrement만큼 감소시키고 결과를 반환한다.
    */
   async decrby(key: string, decrement: number): Promise<number> {
-    return this.client.decrby(key, decrement)
+    return this.client.decrby(key, decrement);
   }
 
   // ── Hash ──────────────────────────────────────────────────────────────────
@@ -445,12 +441,12 @@ export class ForgeRedisClient {
    * 파싱에 실패하면 raw 문자열을 그대로 반환한다. 필드가 없으면 null을 반환한다.
    */
   async hget<T>(key: string, field: string): Promise<T | null> {
-    const raw = await this.client.hget(key, field)
-    if (raw === null) return null
+    const raw = await this.client.hget(key, field);
+    if (raw === null) return null;
     try {
-      return JSON.parse(raw) as T
+      return JSON.parse(raw) as T;
     } catch {
-      return raw as unknown as T
+      return raw as unknown as T;
     }
   }
 
@@ -459,7 +455,7 @@ export class ForgeRedisClient {
    * 해시 전체를 덮어쓰지 않고 해당 필드만 갱신한다.
    */
   async hset(key: string, field: string, value: unknown): Promise<void> {
-    await this.client.hset(key, field, JSON.stringify(value))
+    await this.client.hset(key, field, JSON.stringify(value));
   }
 
   /**
@@ -469,8 +465,8 @@ export class ForgeRedisClient {
   async hmset(key: string, data: Record<string, unknown>): Promise<void> {
     const serialized = Object.fromEntries(
       Object.entries(data).map(([k, v]) => [k, JSON.stringify(v)]),
-    )
-    await this.client.hmset(key, serialized)
+    );
+    await this.client.hmset(key, serialized);
   }
 
   /**
@@ -478,17 +474,17 @@ export class ForgeRedisClient {
    * 해시가 없거나 비어 있으면 null을 반환한다.
    */
   async hgetall<T>(key: string): Promise<Record<string, T> | null> {
-    const raw = await this.client.hgetall(key)
-    if (!raw || Object.keys(raw).length === 0) return null
+    const raw = await this.client.hgetall(key);
+    if (!raw || Object.keys(raw).length === 0) return null;
     return Object.fromEntries(
       Object.entries(raw).map(([k, v]) => {
         try {
-          return [k, JSON.parse(v) as T]
+          return [k, JSON.parse(v) as T];
         } catch {
-          return [k, v as unknown as T]
+          return [k, v as unknown as T];
         }
       }),
-    )
+    );
   }
 
   /**
@@ -496,15 +492,15 @@ export class ForgeRedisClient {
    * 존재하지 않는 필드는 무시한다.
    */
   async hdel(key: string, ...fields: string[]): Promise<number> {
-    return this.client.hdel(key, ...fields)
+    return this.client.hdel(key, ...fields);
   }
 
   /**
    * @description 해시에 특정 필드가 존재하는지 확인한다. 존재하면 true, 없으면 false를 반환한다.
    */
   async hexists(key: string, field: string): Promise<boolean> {
-    const result = await this.client.hexists(key, field)
-    return result === 1
+    const result = await this.client.hexists(key, field);
+    return result === 1;
   }
 
   /**
@@ -512,7 +508,7 @@ export class ForgeRedisClient {
    * 필드가 없으면 0으로 초기화한 뒤 증가한다. 사용자별 통계 누적에 유용하다.
    */
   async hincrby(key: string, field: string, increment: number): Promise<number> {
-    return this.client.hincrby(key, field, increment)
+    return this.client.hincrby(key, field, increment);
   }
 
   // ── List ──────────────────────────────────────────────────────────────────
@@ -522,7 +518,7 @@ export class ForgeRedisClient {
    * 여러 값을 전달하면 순서대로 앞에 쌓인다. 추가 후 리스트 길이를 반환한다.
    */
   async lpush(key: string, ...values: unknown[]): Promise<number> {
-    return this.client.lpush(key, ...values.map((v) => JSON.stringify(v)))
+    return this.client.lpush(key, ...values.map((v) => JSON.stringify(v)));
   }
 
   /**
@@ -530,7 +526,7 @@ export class ForgeRedisClient {
    * 큐(Queue) 패턴에서 enqueue로 사용한다. 추가 후 리스트 길이를 반환한다.
    */
   async rpush(key: string, ...values: unknown[]): Promise<number> {
-    return this.client.rpush(key, ...values.map((v) => JSON.stringify(v)))
+    return this.client.rpush(key, ...values.map((v) => JSON.stringify(v)));
   }
 
   /**
@@ -538,15 +534,15 @@ export class ForgeRedisClient {
    * count를 전달하면 해당 수만큼 꺼내 배열로 반환한다.
    * 리스트가 비어 있으면 null(단일) 또는 빈 배열(count 지정)을 반환한다.
    */
-  async lpop<T>(key: string): Promise<T | null>
-  async lpop<T>(key: string, count: number): Promise<T[]>
+  async lpop<T>(key: string): Promise<T | null>;
+  async lpop<T>(key: string, count: number): Promise<T[]>;
   async lpop<T>(key: string, count?: number): Promise<T | T[] | null> {
     if (count !== undefined) {
-      const raws = await this.client.lpop(key, count)
-      return (raws ?? []).map((v) => JSON.parse(v) as T)
+      const raws = await this.client.lpop(key, count);
+      return (raws ?? []).map((v) => JSON.parse(v) as T);
     }
-    const raw = await this.client.lpop(key)
-    return raw !== null ? (JSON.parse(raw) as T) : null
+    const raw = await this.client.lpop(key);
+    return raw !== null ? (JSON.parse(raw) as T) : null;
   }
 
   /**
@@ -554,15 +550,15 @@ export class ForgeRedisClient {
    * count를 전달하면 해당 수만큼 꺼내 배열로 반환한다.
    * 리스트가 비어 있으면 null(단일) 또는 빈 배열(count 지정)을 반환한다.
    */
-  async rpop<T>(key: string): Promise<T | null>
-  async rpop<T>(key: string, count: number): Promise<T[]>
+  async rpop<T>(key: string): Promise<T | null>;
+  async rpop<T>(key: string, count: number): Promise<T[]>;
   async rpop<T>(key: string, count?: number): Promise<T | T[] | null> {
     if (count !== undefined) {
-      const raws = await this.client.rpop(key, count)
-      return (raws ?? []).map((v) => JSON.parse(v) as T)
+      const raws = await this.client.rpop(key, count);
+      return (raws ?? []).map((v) => JSON.parse(v) as T);
     }
-    const raw = await this.client.rpop(key)
-    return raw !== null ? (JSON.parse(raw) as T) : null
+    const raw = await this.client.rpop(key);
+    return raw !== null ? (JSON.parse(raw) as T) : null;
   }
 
   /**
@@ -570,15 +566,15 @@ export class ForgeRedisClient {
    * stop에 -1을 전달하면 마지막 요소까지 가져온다.
    */
   async lrange<T>(key: string, start: number, stop: number): Promise<T[]> {
-    const raws = await this.client.lrange(key, start, stop)
-    return raws.map((v) => JSON.parse(v) as T)
+    const raws = await this.client.lrange(key, start, stop);
+    return raws.map((v) => JSON.parse(v) as T);
   }
 
   /**
    * @description 리스트의 현재 길이를 반환한다. 키가 없으면 0을 반환한다.
    */
   async llen(key: string): Promise<number> {
-    return this.client.llen(key)
+    return this.client.llen(key);
   }
 
   // ── Set ───────────────────────────────────────────────────────────────────
@@ -588,7 +584,7 @@ export class ForgeRedisClient {
    * 실제로 추가된 새 멤버 수를 반환한다.
    */
   async sadd(key: string, ...members: string[]): Promise<number> {
-    return this.client.sadd(key, ...members)
+    return this.client.sadd(key, ...members);
   }
 
   /**
@@ -596,7 +592,7 @@ export class ForgeRedisClient {
    * 실제로 제거된 멤버 수를 반환한다.
    */
   async srem(key: string, ...members: string[]): Promise<number> {
-    return this.client.srem(key, ...members)
+    return this.client.srem(key, ...members);
   }
 
   /**
@@ -604,14 +600,14 @@ export class ForgeRedisClient {
    * 태그 목록, 권한 집합 등 중복 없는 문자열 컬렉션 조회에 사용한다.
    */
   async smembers(key: string): Promise<string[]> {
-    return this.client.smembers(key)
+    return this.client.smembers(key);
   }
 
   /**
    * @description 셋에 속한 멤버의 수를 반환한다. 키가 없으면 0을 반환한다.
    */
   async scard(key: string): Promise<number> {
-    return this.client.scard(key)
+    return this.client.scard(key);
   }
 
   /**
@@ -619,8 +615,8 @@ export class ForgeRedisClient {
    * 팔로우 여부, 좋아요 여부 등 O(1) 멤버십 체크에 활용한다.
    */
   async sismember(key: string, member: string): Promise<boolean> {
-    const result = await this.client.sismember(key, member)
-    return result === 1
+    const result = await this.client.sismember(key, member);
+    return result === 1;
   }
 
   /**
@@ -628,7 +624,7 @@ export class ForgeRedisClient {
    * 두 사용자의 공통 관심사·맞팔로우 등 "둘 다에 속한 것"을 구할 때 사용한다.
    */
   async sinter(...keys: string[]): Promise<string[]> {
-    return this.client.sinter(...keys)
+    return this.client.sinter(...keys);
   }
 
   /**
@@ -636,7 +632,7 @@ export class ForgeRedisClient {
    * 여러 그룹의 전체 구성원 목록을 구할 때 사용한다.
    */
   async sunion(...keys: string[]): Promise<string[]> {
-    return this.client.sunion(...keys)
+    return this.client.sunion(...keys);
   }
 
   /**
@@ -644,7 +640,7 @@ export class ForgeRedisClient {
    * "추천 후보 중 이미 본 항목 제외" 같은 제외 연산에 사용한다.
    */
   async sdiff(...keys: string[]): Promise<string[]> {
-    return this.client.sdiff(...keys)
+    return this.client.sdiff(...keys);
   }
 
   // ── Sorted Set ────────────────────────────────────────────────────────────
@@ -655,9 +651,9 @@ export class ForgeRedisClient {
    * 랭킹 시스템에서 점수 등록 시 사용한다.
    */
   async zadd(key: string, entries: { score: number; member: string }[]): Promise<number> {
-    if (entries.length === 0) return 0
-    const args = entries.flatMap(({ score, member }) => [score, member]) as (string | number)[]
-    return this.client.zadd(key, ...args) as Promise<number>
+    if (entries.length === 0) return 0;
+    const args = entries.flatMap(({ score, member }) => [score, member]) as (string | number)[];
+    return this.client.zadd(key, ...args) as Promise<number>;
   }
 
   /**
@@ -665,7 +661,7 @@ export class ForgeRedisClient {
    * 탈퇴한 사용자를 랭킹에서 제외할 때 사용한다.
    */
   async zrem(key: string, ...members: string[]): Promise<number> {
-    return this.client.zrem(key, ...members)
+    return this.client.zrem(key, ...members);
   }
 
   /**
@@ -673,8 +669,8 @@ export class ForgeRedisClient {
    * 내 점수를 개별 조회할 때 사용한다.
    */
   async zscore(key: string, member: string): Promise<number | null> {
-    const raw = await this.client.zscore(key, member)
-    return raw !== null ? parseFloat(raw) : null
+    const raw = await this.client.zscore(key, member);
+    return raw !== null ? parseFloat(raw) : null;
   }
 
   /**
@@ -682,8 +678,8 @@ export class ForgeRedisClient {
    * 점수를 덮어쓰지 않고 누적할 때 사용한다. 음수 increment로 감소도 가능하다.
    */
   async zincrby(key: string, member: string, increment: number): Promise<number> {
-    const raw = await this.client.zincrby(key, increment, member)
-    return parseFloat(raw)
+    const raw = await this.client.zincrby(key, increment, member);
+    return parseFloat(raw);
   }
 
   /**
@@ -691,7 +687,7 @@ export class ForgeRedisClient {
    * 멤버가 없으면 null을 반환한다. 낮은 score가 낮은 index다.
    */
   async zrank(key: string, member: string): Promise<number | null> {
-    return this.client.zrank(key, member)
+    return this.client.zrank(key, member);
   }
 
   /**
@@ -700,7 +696,7 @@ export class ForgeRedisClient {
    * getRankAndScore와 달리 순위만 필요할 때 사용한다.
    */
   async zrevrank(key: string, member: string): Promise<number | null> {
-    return this.client.zrevrank(key, member)
+    return this.client.zrevrank(key, member);
   }
 
   /**
@@ -708,7 +704,7 @@ export class ForgeRedisClient {
    * stop에 -1을 전달하면 마지막까지 조회한다.
    */
   async zrange(key: string, start: number, stop: number): Promise<string[]> {
-    return this.client.zrange(key, start, stop)
+    return this.client.zrange(key, start, stop);
   }
 
   /**
@@ -716,7 +712,7 @@ export class ForgeRedisClient {
    * 상위권 멤버 목록을 가져올 때 사용한다. score도 함께 필요하면 zrevrangeWithScores를 사용한다.
    */
   async zrevrange(key: string, start: number, stop: number): Promise<string[]> {
-    return this.client.zrevrange(key, start, stop)
+    return this.client.zrevrange(key, start, stop);
   }
 
   /**
@@ -727,8 +723,8 @@ export class ForgeRedisClient {
     start: number,
     stop: number,
   ): Promise<{ member: string; score: number }[]> {
-    const raws = await this.client.zrange(key, start, stop, 'WITHSCORES')
-    return this.parseWithScores(raws)
+    const raws = await this.client.zrange(key, start, stop, "WITHSCORES");
+    return this.parseWithScores(raws);
   }
 
   /**
@@ -740,23 +736,23 @@ export class ForgeRedisClient {
     start: number,
     stop: number,
   ): Promise<{ member: string; score: number }[]> {
-    const raws = await this.client.zrevrange(key, start, stop, 'WITHSCORES')
-    return this.parseWithScores(raws)
+    const raws = await this.client.zrevrange(key, start, stop, "WITHSCORES");
+    return this.parseWithScores(raws);
   }
 
   /**
    * @description min~max score 범위에 속하는 멤버 수를 반환한다.
    * '-inf', '+inf'로 전체 범위를 지정할 수 있다.
    */
-  async zcount(key: string, min: number | '-inf', max: number | '+inf'): Promise<number> {
-    return this.client.zcount(key, min, max)
+  async zcount(key: string, min: number | "-inf", max: number | "+inf"): Promise<number> {
+    return this.client.zcount(key, min, max);
   }
 
   /**
    * @description Sorted Set의 전체 멤버 수를 반환한다. 키가 없으면 0을 반환한다.
    */
   async zcard(key: string): Promise<number> {
-    return this.client.zcard(key)
+    return this.client.zcard(key);
   }
 
   /**
@@ -764,8 +760,8 @@ export class ForgeRedisClient {
    * 제거된 { member, score }[] 를 오름차순으로 반환한다. 우선순위 큐, 지연 작업 처리에 사용한다.
    */
   async zpopmin(key: string, count = 1): Promise<{ member: string; score: number }[]> {
-    const raws = await this.client.zpopmin(key, count)
-    return this.parseWithScores(raws)
+    const raws = await this.client.zpopmin(key, count);
+    return this.parseWithScores(raws);
   }
 
   /**
@@ -773,8 +769,8 @@ export class ForgeRedisClient {
    * 제거된 { member, score }[] 를 내림차순으로 반환한다.
    */
   async zpopmax(key: string, count = 1): Promise<{ member: string; score: number }[]> {
-    const raws = await this.client.zpopmax(key, count)
-    return this.parseWithScores(raws)
+    const raws = await this.client.zpopmax(key, count);
+    return this.parseWithScores(raws);
   }
 
   // ── 랭킹 헬퍼 ────────────────────────────────────────────────────────────
@@ -788,8 +784,8 @@ export class ForgeRedisClient {
     key: string,
     n: number,
   ): Promise<{ member: string; score: number; rank: number }[]> {
-    const raws = await this.client.zrevrange(key, 0, n - 1, 'WITHSCORES')
-    return this.parseWithScores(raws).map((entry, i) => ({ ...entry, rank: i + 1 }))
+    const raws = await this.client.zrevrange(key, 0, n - 1, "WITHSCORES");
+    return this.parseWithScores(raws).map((entry, i) => ({ ...entry, rank: i + 1 }));
   }
 
   /**
@@ -801,24 +797,24 @@ export class ForgeRedisClient {
     key: string,
     member: string,
   ): Promise<{ rank: number | null; score: number | null }> {
-    const pipeline = this.client.pipeline()
-    pipeline.zrevrank(key, member)
-    pipeline.zscore(key, member)
-    const results = await pipeline.exec()
-    const rank = results?.[0]?.[1] as number | null
-    const scoreRaw = results?.[1]?.[1] as string | null
+    const pipeline = this.client.pipeline();
+    pipeline.zrevrank(key, member);
+    pipeline.zscore(key, member);
+    const results = await pipeline.exec();
+    const rank = results?.[0]?.[1] as number | null;
+    const scoreRaw = results?.[1]?.[1] as string | null;
     return {
       rank: rank !== null ? rank + 1 : null,
       score: scoreRaw !== null ? parseFloat(scoreRaw) : null,
-    }
+    };
   }
 
   private parseWithScores(raws: string[]): { member: string; score: number }[] {
-    const result: { member: string; score: number }[] = []
+    const result: { member: string; score: number }[] = [];
     for (let i = 0; i < raws.length; i += 2) {
-      result.push({ member: raws[i], score: parseFloat(raws[i + 1]) })
+      result.push({ member: raws[i], score: parseFloat(raws[i + 1]) });
     }
-    return result
+    return result;
   }
 
   // ── Pub/Sub ───────────────────────────────────────────────────────────────
@@ -828,7 +824,7 @@ export class ForgeRedisClient {
    * 이벤트 브로드캐스트, 실시간 알림 전송에 사용한다.
    */
   async publish(channel: string, value: unknown): Promise<number> {
-    return this.client.publish(channel, JSON.stringify(value))
+    return this.client.publish(channel, JSON.stringify(value));
   }
 
   /**
@@ -837,8 +833,8 @@ export class ForgeRedisClient {
    * 수신된 메시지는 JSON 역직렬화 후 handler에 전달된다.
    */
   subscribe(channel: string, handler: (value: unknown) => void): void {
-    this._channels.set(channel, handler)
-    void this.getSubscriber().subscribe(channel)
+    this._channels.set(channel, handler);
+    void this.getSubscriber().subscribe(channel);
   }
 
   /**
@@ -846,26 +842,26 @@ export class ForgeRedisClient {
    * 구독 중인 채널이 없어도 안전하게 호출할 수 있다.
    */
   async unsubscribe(channel: string): Promise<void> {
-    this._channels.delete(channel)
+    this._channels.delete(channel);
     if (this._subscriber) {
-      await this._subscriber.unsubscribe(channel)
+      await this._subscriber.unsubscribe(channel);
     }
   }
 
   private getSubscriber(): Redis {
     if (!this._subscriber) {
-      this._subscriber = this.client.duplicate()
-      this._subscriber.on('message', (channel: string, message: string) => {
-        const handler = this._channels.get(channel)
-        if (!handler) return
+      this._subscriber = this.client.duplicate();
+      this._subscriber.on("message", (channel: string, message: string) => {
+        const handler = this._channels.get(channel);
+        if (!handler) return;
         try {
-          handler(JSON.parse(message) as unknown)
+          handler(JSON.parse(message) as unknown);
         } catch {
-          handler(message)
+          handler(message);
         }
-      })
+      });
     }
-    return this._subscriber
+    return this._subscriber;
   }
 
   // ── Key utility ───────────────────────────────────────────────────────────
@@ -876,7 +872,7 @@ export class ForgeRedisClient {
    * 예: buildKey('user', '123', 'profile') → 'user:123:profile'
    */
   buildKey(...parts: string[]): string {
-    return parts.filter(Boolean).join(':')
+    return parts.filter(Boolean).join(":");
   }
 
   // ── Ping / Connection ─────────────────────────────────────────────────────
@@ -887,10 +883,10 @@ export class ForgeRedisClient {
    */
   async ping(): Promise<boolean> {
     try {
-      const result = await this.client.ping()
-      return result === 'PONG'
+      const result = await this.client.ping();
+      return result === "PONG";
     } catch {
-      return false
+      return false;
     }
   }
 
@@ -899,7 +895,7 @@ export class ForgeRedisClient {
    * ForgeRedisClient가 지원하지 않는 Redis 명령이 필요할 때 사용한다.
    */
   getClient(): Redis {
-    return this.client
+    return this.client;
   }
 
   /**
@@ -908,13 +904,13 @@ export class ForgeRedisClient {
    */
   async disconnect(): Promise<void> {
     if (this._subscriber) {
-      this._subscriber.disconnect()
-      this._subscriber = null
+      this._subscriber.disconnect();
+      this._subscriber = null;
     }
-    this.client.disconnect()
+    this.client.disconnect();
   }
 }
 
 export function createRedisClient(options?: RedisOptions): ForgeRedisClient {
-  return new ForgeRedisClient(options)
+  return new ForgeRedisClient(options);
 }

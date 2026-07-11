@@ -1,16 +1,16 @@
-import fp from 'fastify-plugin'
-import type { FastifyPluginAsync } from 'fastify'
-import { createLogger } from '../logger'
-import type { ForgeLogger } from '../logger'
-import type { LoggerOptions } from '../logger.options'
-import { parseTraceparent } from '../../core'
+import fp from "fastify-plugin";
+import type { FastifyPluginAsync } from "fastify";
+import { createLogger } from "../logger";
+import type { ForgeLogger } from "../logger";
+import type { LoggerOptions } from "../logger.options";
+import { parseTraceparent } from "../../core";
 
-declare module 'fastify' {
+declare module "fastify" {
   interface FastifyInstance {
-    forgeLogger: ForgeLogger
+    forgeLogger: ForgeLogger;
   }
   interface FastifyRequest {
-    forgeLogger: ForgeLogger
+    forgeLogger: ForgeLogger;
   }
 }
 
@@ -22,22 +22,23 @@ declare module 'fastify' {
  * 있으면 재사용하고, 없으면 새로 생성한다).
  */
 const loggerPlugin: FastifyPluginAsync<LoggerOptions> = async (fastify, options) => {
-  const logger = createLogger(options)
+  const logger = createLogger(options);
 
-  fastify.decorate('forgeLogger', logger)
-  fastify.decorateRequest('forgeLogger', { getter: () => logger })
+  fastify.decorate("forgeLogger", logger);
+  fastify.decorateRequest("forgeLogger", { getter: () => logger });
 
-  fastify.addHook('onRequest', (request, _reply, done) => {
-    const rawTraceparent = request.headers['traceparent'] as string | undefined
+  fastify.addHook("onRequest", (request, _reply, done) => {
+    const rawTraceparent = request.headers["traceparent"] as string | undefined;
     const traceId =
       (rawTraceparent ? parseTraceparent(rawTraceparent)?.traceId : undefined) ??
-      (request.headers['x-trace-id'] as string | undefined) ??
-      crypto.randomUUID()
-    const requestId = (request.headers['x-request-id'] as string | undefined) ?? crypto.randomUUID()
-    request.forgeLogger = logger.withContext({ traceId, requestId, ip: request.ip })
-    done()
-  })
-}
+      (request.headers["x-trace-id"] as string | undefined) ??
+      crypto.randomUUID();
+    const requestId =
+      (request.headers["x-request-id"] as string | undefined) ?? crypto.randomUUID();
+    request.forgeLogger = logger.withContext({ traceId, requestId, ip: request.ip });
+    done();
+  });
+};
 
 /**
  * @description `loggerPlugin`을 `fastify-plugin`으로 감싸 캡슐화를 해제한 플러그인.
@@ -45,5 +46,5 @@ const loggerPlugin: FastifyPluginAsync<LoggerOptions> = async (fastify, options)
  * `request.forgeLogger`를 즉시 사용할 수 있다.
  */
 export const fastifyLogger = fp(loggerPlugin, {
-  name: '@paikpaik/node-forge/logger',
-})
+  name: "@paikpaik/node-forge/logger",
+});

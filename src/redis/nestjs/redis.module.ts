@@ -1,12 +1,12 @@
-import { Module, Global } from '@nestjs/common'
-import type { DynamicModule, FactoryProvider, ModuleMetadata } from '@nestjs/common'
-import { ForgeRedisClient } from '../redis'
-import type { RedisOptions } from '../redis.options'
-import { REDIS_CLIENT, REDIS_OPTIONS } from './redis.constants'
+import { Module, Global } from "@nestjs/common";
+import type { DynamicModule, FactoryProvider, ModuleMetadata } from "@nestjs/common";
+import { ForgeRedisClient } from "../redis";
+import type { RedisOptions } from "../redis.options";
+import { REDIS_CLIENT, REDIS_OPTIONS } from "./redis.constants";
 
-export interface RedisAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
-  useFactory: (...args: unknown[]) => RedisOptions | Promise<RedisOptions>
-  inject?: FactoryProvider['inject']
+export interface RedisAsyncOptions extends Pick<ModuleMetadata, "imports"> {
+  useFactory: (...args: unknown[]) => RedisOptions | Promise<RedisOptions>;
+  inject?: FactoryProvider["inject"];
 }
 
 @Global()
@@ -24,7 +24,7 @@ export class RedisModule {
         },
       ],
       exports: [REDIS_CLIENT],
-    }
+    };
   }
 
   static forRootAsync(asyncOptions: RedisAsyncOptions): DynamicModule {
@@ -44,6 +44,6 @@ export class RedisModule {
         },
       ],
       exports: [REDIS_CLIENT],
-    }
+    };
   }
 }

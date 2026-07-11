@@ -1,6 +1,6 @@
-import { Controller, Get, Header, Inject } from '@nestjs/common'
-import { ForgeMetrics } from '../metrics'
-import { METRICS_INSTANCE } from './metrics.constants'
+import { Controller, Get, Header, Inject } from "@nestjs/common";
+import { ForgeMetrics } from "../metrics";
+import { METRICS_INSTANCE } from "./metrics.constants";
 
 /**
  * @description Prometheus가 스크래핑할 `GET /metrics` 엔드포인트를 제공하는 컨트롤러.
@@ -11,9 +11,9 @@ import { METRICS_INSTANCE } from './metrics.constants'
 export class MetricsController {
   constructor(@Inject(METRICS_INSTANCE) private readonly forge: ForgeMetrics) {}
 
-  @Get('metrics')
-  @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+  @Get("metrics")
+  @Header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
   async metrics(): Promise<string> {
-    return this.forge.metrics()
+    return this.forge.metrics();
   }
 }

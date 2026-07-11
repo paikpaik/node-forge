@@ -9,10 +9,10 @@ export class ForgeError extends Error {
     message: string,
     public readonly cause?: unknown,
   ) {
-    super(message)
-    this.name = this.constructor.name
+    super(message);
+    this.name = this.constructor.name;
     // instanceof 체크가 정상 동작하도록 prototype 복원
-    Object.setPrototypeOf(this, new.target.prototype)
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
@@ -27,7 +27,7 @@ export class ForgeHttpError extends ForgeError {
     message: string,
     cause?: unknown,
   ) {
-    super(code, message, cause)
+    super(code, message, cause);
   }
 }
 
@@ -37,11 +37,7 @@ export class ForgeHttpError extends ForgeError {
  * 응답 변환 계층에서 `code`를 기준으로 클라이언트에 안전한 메시지로 매핑한다.
  */
 export class ForgeBizError extends ForgeError {
-  constructor(
-    code: string,
-    message: string,
-    cause?: unknown,
-  ) {
-    super(code, message, cause)
+  constructor(code: string, message: string, cause?: unknown) {
+    super(code, message, cause);
   }
 }
