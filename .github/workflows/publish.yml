@@ -30,6 +30,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Smoke test (installed-package require/import + cross-entry instanceof)
+        run: npm run smoke
+
       - name: Publish
         run: npm publish
         env:
