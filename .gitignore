@@ -19,3 +19,6 @@ npm-debug.log*
 # 에디터
 .vscode/
 .idea/
+
+# 수정 제안서
+proposals

@@ -87,8 +87,8 @@ npm run format    # prettier src/
 `v*` 형태의 태그를 push하면 GitHub Actions가 테스트 → 빌드 → GitHub Packages 배포를 자동으로 수행합니다.
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
 ## 라이선스
