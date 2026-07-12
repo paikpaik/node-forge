@@ -1,11 +1,18 @@
 import { Module } from "@nestjs/common";
-import type { DynamicModule } from "@nestjs/common";
+import type { DynamicModule, FactoryProvider, ModuleMetadata } from "@nestjs/common";
 import type { HealthChecker } from "../health";
 import { HealthController } from "./health.controller";
 import { HEALTH_CHECKERS } from "./health.constants";
 
 export interface HealthModuleOptions {
   checkers: Record<string, HealthChecker>;
+}
+
+export interface HealthAsyncOptions extends Pick<ModuleMetadata, "imports"> {
+  useFactory: (
+    ...args: unknown[]
+  ) => Record<string, HealthChecker> | Promise<Record<string, HealthChecker>>;
+  inject?: FactoryProvider["inject"];
 }
 
 /**
@@ -21,6 +28,26 @@ export class HealthModule {
       module: HealthModule,
       controllers: [HealthController],
       providers: [{ provide: HEALTH_CHECKERS, useValue: options.checkers }],
+    };
+  }
+
+  /**
+   * @description 체커 구성이 다른 프로바이더(예: `RedisModule`이 만든 `ForgeRedisClient`)에
+   * 의존할 때 사용한다. `useFactory`는 DI 컨테이너가 `inject`로 지정한 의존성을 모두 해석한
+   * 뒤에 호출되므로, 체커 전용 인스턴스를 별도로 만들지 않고도 기존 프로바이더를 재사용할 수 있다.
+   */
+  static forRootAsync(asyncOptions: HealthAsyncOptions): DynamicModule {
+    return {
+      module: HealthModule,
+      imports: asyncOptions.imports ?? [],
+      controllers: [HealthController],
+      providers: [
+        {
+          provide: HEALTH_CHECKERS,
+          useFactory: asyncOptions.useFactory,
+          inject: asyncOptions.inject ?? [],
+        },
+      ],
     };
   }
 }
