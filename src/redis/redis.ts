@@ -649,10 +649,26 @@ export class ForgeRedisClient {
    * @description Sorted Set에 { score, member } 쌍을 추가하거나 갱신한다.
    * 동일 member가 이미 있으면 score만 업데이트된다. 새로 추가된 멤버 수를 반환한다.
    * 랭킹 시스템에서 점수 등록 시 사용한다.
+   *
+   * `options.mode`로 "member 존재 여부에 따른 조건부 쓰기"를 Redis 서버 안에서 원자적으로
+   * 처리할 수 있다: `"NX"`는 member가 없을 때만 추가(중복 등록 방지에 사용), `"XX"`는 있을
+   * 때만 갱신한다. `zscore`로 먼저 조회하고 `zadd`하는 방식은 그 사이에 다른 요청이 끼어들
+   * 수 있어(TOCTOU) 중복 방지 목적으로는 안전하지 않으므로, 그런 경우 반드시 `mode: "NX"`를
+   * 사용해야 한다. `options.ch`를 true로 주면 반환값이 "추가된 개수" 대신 "변경된 개수"
+   * (추가+갱신)가 된다.
    */
-  async zadd(key: string, entries: { score: number; member: string }[]): Promise<number> {
+  async zadd(
+    key: string,
+    entries: { score: number; member: string }[],
+    options?: { mode?: "NX" | "XX"; ch?: boolean },
+  ): Promise<number> {
     if (entries.length === 0) return 0;
-    const args = entries.flatMap(({ score, member }) => [score, member]) as (string | number)[];
+    const flags = [
+      ...(options?.mode ? [options.mode] : []),
+      ...(options?.ch ? ["CH"] : []),
+    ];
+    const scoreMemberArgs = entries.flatMap(({ score, member }) => [score, member]);
+    const args = [...flags, ...scoreMemberArgs] as (string | number)[];
     return this.client.zadd(key, ...args) as Promise<number>;
   }
 
