@@ -941,6 +941,36 @@ describe("ForgeRedisClient", () => {
       expect(await client.zadd("rank", [])).toBe(0);
       expect(mockClient.zadd).not.toHaveBeenCalled();
     });
+
+    it("mode: NX를 전달하면 NX 플래그와 함께 zadd를 호출한다", async () => {
+      mockClient.zadd.mockResolvedValue(1);
+      await client.zadd("queue", [{ score: 1000, member: "user:1" }], { mode: "NX" });
+      expect(mockClient.zadd).toHaveBeenCalledWith("queue", "NX", 1000, "user:1");
+    });
+
+    it("mode: XX를 전달하면 XX 플래그와 함께 zadd를 호출한다", async () => {
+      mockClient.zadd.mockResolvedValue(0);
+      await client.zadd("queue", [{ score: 1000, member: "user:1" }], { mode: "XX" });
+      expect(mockClient.zadd).toHaveBeenCalledWith("queue", "XX", 1000, "user:1");
+    });
+
+    it("ch: true를 전달하면 CH 플래그와 함께 zadd를 호출한다", async () => {
+      mockClient.zadd.mockResolvedValue(1);
+      await client.zadd("rank", [{ score: 100, member: "user:1" }], { ch: true });
+      expect(mockClient.zadd).toHaveBeenCalledWith("rank", "CH", 100, "user:1");
+    });
+
+    it("mode와 ch를 함께 전달하면 두 플래그 모두 붙는다", async () => {
+      mockClient.zadd.mockResolvedValue(1);
+      await client.zadd("rank", [{ score: 100, member: "user:1" }], { mode: "NX", ch: true });
+      expect(mockClient.zadd).toHaveBeenCalledWith("rank", "NX", "CH", 100, "user:1");
+    });
+
+    it("NX 모드로 이미 존재하는 member를 추가 시도하면 0을 반환한다 (중복 등록 방지)", async () => {
+      mockClient.zadd.mockResolvedValue(0);
+      const result = await client.zadd("queue", [{ score: 1000, member: "user:1" }], { mode: "NX" });
+      expect(result).toBe(0);
+    });
   });
 
   describe("zrem", () => {
