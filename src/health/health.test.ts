@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import type { DataSource } from "typeorm";
 import type { ForgeRedisClient } from "../redis";
 import { checkHealth, createDatabaseHealthChecker, createRedisHealthChecker } from "./health";
@@ -34,6 +34,60 @@ describe("checkHealth", () => {
 
   it("체커가 없으면 status: ok와 빈 checks를 반환한다", async () => {
     expect(await checkHealth({})).toEqual({ status: "ok", checks: [] });
+  });
+});
+
+describe("checkHealth cacheMs", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("cacheMs 이내의 반복 호출은 체커를 다시 실행하지 않고 캐시된 결과를 재사용한다", async () => {
+    const checker = vi.fn().mockResolvedValue(undefined);
+    const checkers = { a: checker };
+    vi.spyOn(Date, "now").mockReturnValue(1_000);
+
+    await checkHealth(checkers, { cacheMs: 5_000 });
+    await checkHealth(checkers, { cacheMs: 5_000 });
+
+    expect(checker).toHaveBeenCalledTimes(1);
+  });
+
+  it("cacheMs가 지나면 체커를 다시 실행한다", async () => {
+    const checker = vi.fn().mockResolvedValue(undefined);
+    const checkers = { a: checker };
+    const now = vi.spyOn(Date, "now");
+
+    now.mockReturnValue(1_000);
+    await checkHealth(checkers, { cacheMs: 5_000 });
+
+    now.mockReturnValue(7_000);
+    await checkHealth(checkers, { cacheMs: 5_000 });
+
+    expect(checker).toHaveBeenCalledTimes(2);
+  });
+
+  it("cacheMs를 생략하면 매 호출마다 체커를 실행한다(하위 호환)", async () => {
+    const checker = vi.fn().mockResolvedValue(undefined);
+    const checkers = { a: checker };
+
+    await checkHealth(checkers);
+    await checkHealth(checkers);
+
+    expect(checker).toHaveBeenCalledTimes(2);
+  });
+
+  it("캐싱 중에는 실패 상태도 만료 전까지 그대로 유지된다", async () => {
+    const checker = vi.fn().mockRejectedValue(new Error("연결 실패"));
+    const checkers = { a: checker };
+    vi.spyOn(Date, "now").mockReturnValue(1_000);
+
+    const first = await checkHealth(checkers, { cacheMs: 5_000 });
+    const second = await checkHealth(checkers, { cacheMs: 5_000 });
+
+    expect(second).toEqual(first);
+    expect(second.status).toBe("error");
+    expect(checker).toHaveBeenCalledTimes(1);
   });
 });
 

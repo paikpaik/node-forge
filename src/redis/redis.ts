@@ -577,6 +577,15 @@ export class ForgeRedisClient {
     return this.client.llen(key);
   }
 
+  /**
+   * @description 리스트를 start~stop 인덱스 범위만 남기고 나머지를 제거한다(Redis LTRIM).
+   * "최근 N개만 유지" 패턴에서 lpush/rpush 뒤에 호출해 리스트가 무한히 자라는 걸 막는 용도로 쓴다.
+   * 존재하지 않는 키에 호출해도 에러 없이 무시된다.
+   */
+  async ltrim(key: string, start: number, stop: number): Promise<void> {
+    await this.client.ltrim(key, start, stop);
+  }
+
   // ── Set ───────────────────────────────────────────────────────────────────
 
   /**

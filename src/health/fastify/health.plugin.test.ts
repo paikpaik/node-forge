@@ -4,7 +4,7 @@ import { fastifyHealth } from "./health.plugin";
 
 type Handler = (request: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
 
-function getHandler(checkers: Record<string, () => Promise<void>>) {
+function getHandler(checkers: Record<string, () => Promise<void>>, cacheMs?: number) {
   let captured: Handler | undefined;
   const fastify = {
     get: (_path: string, handler: Handler) => {
@@ -14,10 +14,10 @@ function getHandler(checkers: Record<string, () => Promise<void>>) {
 
   const plugin = fastifyHealth as unknown as (
     fastify: FastifyInstance,
-    options: { checkers: Record<string, () => Promise<void>> },
+    options: { checkers: Record<string, () => Promise<void>>; cacheMs?: number },
   ) => Promise<void>;
 
-  return plugin(fastify, { checkers }).then(() => {
+  return plugin(fastify, { checkers, cacheMs }).then(() => {
     if (!captured) throw new Error("GET /health 라우트가 등록되지 않았습니다");
     return captured;
   });
@@ -49,5 +49,16 @@ describe("fastifyHealth", () => {
       checks: [{ name: "db", status: "down", error: "연결 실패" }],
     });
     expect(reply.code).toHaveBeenCalledWith(503);
+  });
+
+  it("cacheMs를 지정하면 짧은 시간 안의 반복 요청에서 체커를 다시 실행하지 않는다", async () => {
+    const checker = vi.fn().mockResolvedValue(undefined);
+    const handler = await getHandler({ db: checker }, 5_000);
+    const reply = mockReply();
+
+    await handler({} as FastifyRequest, reply);
+    await handler({} as FastifyRequest, reply);
+
+    expect(checker).toHaveBeenCalledTimes(1);
   });
 });
