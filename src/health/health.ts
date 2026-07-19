@@ -18,12 +18,33 @@ export interface HealthReport {
   checks: HealthCheckResult[];
 }
 
+export interface CheckHealthOptions {
+  /** 이 시간(ms) 안의 반복 호출은 체커를 다시 실행하지 않고 마지막 결과를 재사용한다. 생략하면 캐싱 없음(기존 동작). */
+  cacheMs?: number;
+}
+
+const reportCache = new WeakMap<Record<string, HealthChecker>, { cachedAt: number; report: HealthReport }>();
+
 /**
  * @description 여러 `HealthChecker`를 병렬로 실행해 표준화된 `HealthReport`로 집계한다.
  * `Promise.allSettled`를 사용하므로 일부 체커가 느리거나 실패해도 전체 응답이 막히지 않으며,
  * 하나라도 실패하면 전체 `status`는 `'error'`가 된다 (`/health` 엔드포인트의 응답 코드 결정에 사용).
+ *
+ * `options.cacheMs`를 지정하면, 동일한 `checkers` 객체로 그 시간(ms) 안에 다시 호출될 때
+ * 체커를 재실행하지 않고 마지막 `HealthReport`를 그대로 반환한다. Kafka Admin 연결처럼 체커
+ * 자체가 무거운 경우, `/health`를 짧은 간격으로 반복 호출하는 오케스트레이터 환경에서 비용을 줄인다.
  */
-export async function checkHealth(checkers: Record<string, HealthChecker>): Promise<HealthReport> {
+export async function checkHealth(
+  checkers: Record<string, HealthChecker>,
+  options: CheckHealthOptions = {},
+): Promise<HealthReport> {
+  if (options.cacheMs !== undefined) {
+    const cached = reportCache.get(checkers);
+    if (cached && Date.now() - cached.cachedAt < options.cacheMs) {
+      return cached.report;
+    }
+  }
+
   const entries = Object.entries(checkers);
 
   const checks = await Promise.all(
@@ -42,7 +63,13 @@ export async function checkHealth(checkers: Record<string, HealthChecker>): Prom
   );
 
   const status = checks.every((check) => check.status === "up") ? "ok" : "error";
-  return { status, checks };
+  const report: HealthReport = { status, checks };
+
+  if (options.cacheMs !== undefined) {
+    reportCache.set(checkers, { cachedAt: Date.now(), report });
+  }
+
+  return report;
 }
 
 /**

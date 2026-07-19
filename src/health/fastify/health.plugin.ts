@@ -5,6 +5,8 @@ import type { HealthChecker } from "../health";
 
 export interface HealthPluginOptions {
   checkers: Record<string, HealthChecker>;
+  /** 이 시간(ms) 안의 반복 요청은 체커를 다시 실행하지 않고 마지막 결과를 재사용한다. 생략하면 캐싱 없음(기존 동작). */
+  cacheMs?: number;
 }
 
 /**
@@ -14,7 +16,7 @@ export interface HealthPluginOptions {
  */
 const healthPlugin: FastifyPluginAsync<HealthPluginOptions> = async (fastify, options) => {
   fastify.get("/health", async (_request, reply) => {
-    const report = await checkHealth(options.checkers);
+    const report = await checkHealth(options.checkers, { cacheMs: options.cacheMs });
 
     if (report.status === "error") {
       reply.code(503);

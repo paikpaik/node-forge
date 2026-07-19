@@ -30,4 +30,14 @@ describe("HealthController", () => {
       });
     }
   });
+
+  it("cacheMs를 지정하면 짧은 시간 안의 반복 요청에서 체커를 다시 실행하지 않는다", async () => {
+    const checker = vi.fn().mockResolvedValue(undefined);
+    const controller = new HealthController({ db: checker }, 5_000);
+
+    await controller.check();
+    await controller.check();
+
+    expect(checker).toHaveBeenCalledTimes(1);
+  });
 });

@@ -29,6 +29,7 @@ const mockClient = {
   rpop: vi.fn(),
   lrange: vi.fn(),
   llen: vi.fn(),
+  ltrim: vi.fn(),
   sadd: vi.fn(),
   srem: vi.fn(),
   smembers: vi.fn(),
@@ -852,6 +853,14 @@ describe("ForgeRedisClient", () => {
     it("리스트 길이를 반환한다", async () => {
       mockClient.llen.mockResolvedValue(5);
       expect(await client.llen("list")).toBe(5);
+    });
+  });
+
+  describe("ltrim", () => {
+    it("start~stop 범위로 리스트를 잘라낸다", async () => {
+      mockClient.ltrim.mockResolvedValue("OK");
+      await client.ltrim("list", 0, 9);
+      expect(mockClient.ltrim).toHaveBeenCalledWith("list", 0, 9);
     });
   });
 
