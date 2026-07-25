@@ -10,6 +10,7 @@ const modules = [
   'metrics',
   'versioning',
   'health',
+  'auth',
 ]
 
 const frameworkEntries = modules.reduce(
@@ -27,6 +28,9 @@ export default defineConfig({
     'core/index': 'src/core/index.ts',
     ...modules.reduce((acc, mod) => ({ ...acc, [`${mod}/index`]: `src/${mod}/index.ts` }), {}),
     ...frameworkEntries,
+    // grpc는 fastify 변형이 없어 3-path 공통 modules 배열에 넣지 않고 개별 등록한다
+    'grpc/index': 'src/grpc/index.ts',
+    'grpc/nestjs/index': 'src/grpc/nestjs/index.ts',
   },
   format: ['cjs', 'esm'],
   dts: true,
@@ -36,6 +40,7 @@ export default defineConfig({
   external: [
     '@nestjs/common',
     '@nestjs/core',
+    '@nestjs/microservices',
     'fastify',
     'fastify-plugin',
     'ioredis',

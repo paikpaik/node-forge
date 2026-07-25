@@ -8,3 +8,5 @@ export * from "./events";
 export * from "./metrics";
 export * from "./versioning";
 export * from "./health";
+export * from "./auth";
+export * from "./grpc";
