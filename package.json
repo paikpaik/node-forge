@@ -1,6 +1,6 @@
 {
   "name": "@paikpaik/node-forge",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Common Node.js modules for NestJS and Fastify",
   "license": "MIT",
   "author": "paikpaik",
@@ -156,6 +156,31 @@
       "types": "./dist/health/fastify/index.d.ts",
       "import": "./dist/health/fastify/index.mjs",
       "require": "./dist/health/fastify/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./dist/auth/index.mjs",
+      "require": "./dist/auth/index.js"
+    },
+    "./auth/nestjs": {
+      "types": "./dist/auth/nestjs/index.d.ts",
+      "import": "./dist/auth/nestjs/index.mjs",
+      "require": "./dist/auth/nestjs/index.js"
+    },
+    "./auth/fastify": {
+      "types": "./dist/auth/fastify/index.d.ts",
+      "import": "./dist/auth/fastify/index.mjs",
+      "require": "./dist/auth/fastify/index.js"
+    },
+    "./grpc": {
+      "types": "./dist/grpc/index.d.ts",
+      "import": "./dist/grpc/index.mjs",
+      "require": "./dist/grpc/index.js"
+    },
+    "./grpc/nestjs": {
+      "types": "./dist/grpc/nestjs/index.d.ts",
+      "import": "./dist/grpc/nestjs/index.mjs",
+      "require": "./dist/grpc/nestjs/index.js"
     }
   },
   "files": [
@@ -179,6 +204,7 @@
   "dependencies": {
     "axios": "^1.7.0",
     "eventemitter2": "^6.4.9",
+    "jsonwebtoken": "^9.0.3",
     "pino": "^9.4.0",
     "pino-pretty": "^11.0.0",
     "prom-client": "^15.1.3"
@@ -186,6 +212,7 @@
   "peerDependencies": {
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
+    "@nestjs/microservices": "^10.0.0",
     "fastify": "^4.0.0 || ^5.0.0",
     "fastify-plugin": "^4.0.0 || ^5.0.0",
     "ioredis": "^5.0.0",
@@ -198,6 +225,9 @@
       "optional": true
     },
     "@nestjs/core": {
+      "optional": true
+    },
+    "@nestjs/microservices": {
       "optional": true
     },
     "fastify": {
@@ -222,6 +252,8 @@
   "devDependencies": {
     "@nestjs/common": "^10.4.0",
     "@nestjs/core": "^10.4.0",
+    "@nestjs/microservices": "^10.4.22",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.16.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
@@ -233,8 +265,8 @@
     "prettier": "^3.3.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.20",
     "tsup": "^8.3.0",
+    "typeorm": "^0.3.20",
     "typescript": "^5.5.4",
     "vitest": "^2.1.0"
   },
