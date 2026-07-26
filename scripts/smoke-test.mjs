@@ -32,6 +32,7 @@ try {
       "@nestjs/common@^10",
       "@nestjs/core@^10",
       "@nestjs/microservices@^10",
+      "@grpc/grpc-js@^1.9",
       "rxjs@^7",
       "reflect-metadata@^0.2",
       "--no-save",
@@ -52,12 +53,17 @@ const responseNestjs = require("@paikpaik/node-forge/response/nestjs");
 const healthNestjs = require("@paikpaik/node-forge/health/nestjs");
 const authNestjs = require("@paikpaik/node-forge/auth/nestjs");
 const grpcNestjs = require("@paikpaik/node-forge/grpc/nestjs");
+const loggerNestjs = require("@paikpaik/node-forge/logger/nestjs");
 assert.ok(core.ForgeBizError, "core: require()로 ForgeBizError 로드 실패");
+assert.ok(core.runWithRequestContext, "core: require()로 runWithRequestContext 로드 실패");
 assert.ok(responseNestjs.ForgeExceptionFilter, "response/nestjs: require()로 ForgeExceptionFilter 로드 실패");
 assert.ok(healthNestjs.HealthModule, "health/nestjs: require()로 HealthModule 로드 실패");
 assert.ok(authNestjs.JwtAuthGuard, "auth/nestjs: require()로 JwtAuthGuard 로드 실패");
 assert.ok(authNestjs.RolesGuard, "auth/nestjs: require()로 RolesGuard 로드 실패");
 assert.ok(grpcNestjs.createGrpcClientOptions, "grpc/nestjs: require()로 createGrpcClientOptions 로드 실패");
+assert.ok(grpcNestjs.buildOutgoingTraceMetadata, "grpc/nestjs: require()로 buildOutgoingTraceMetadata 로드 실패");
+assert.ok(grpcNestjs.GrpcTraceAccessLogInterceptor, "grpc/nestjs: require()로 GrpcTraceAccessLogInterceptor 로드 실패");
+assert.ok(loggerNestjs.TraceAccessLogMiddleware, "logger/nestjs: require()로 TraceAccessLogMiddleware 로드 실패");
 
 const err = new core.ForgeBizError("E9409", "smoke");
 const catchTargets = Reflect.getMetadata("__filterCatchExceptions__", responseNestjs.ForgeExceptionFilter);
@@ -113,6 +119,41 @@ const { EventsModule } = require("@paikpaik/node-forge/events/nestjs");
 `,
   );
   execFileSync("node", ["check-events-boot.cjs"], { cwd: consumerDir, stdio: "inherit" });
+
+  writeFileSync(
+    join(consumerDir, "check-grpc-trace-boot.cjs"),
+    `
+require("reflect-metadata");
+const { Module } = require("@nestjs/common");
+const { NestFactory } = require("@nestjs/core");
+const { LoggerModule } = require("@paikpaik/node-forge/logger/nestjs");
+const { GrpcTraceAccessLogInterceptor } = require("@paikpaik/node-forge/grpc/nestjs");
+
+// GrpcTraceAccessLogInterceptor는 logger/nestjs의 ForgeLoggerService를 @Inject(ForgeLoggerService)로
+// 크로스 엔트리 주입받는다. tsup의 code splitting(splitting: true)이 두 엔트리 사이에서 클래스를
+// 공유하지 못하면(엔트리별로 중복 번들링되면) 여기서 쓰는 ForgeLoggerService 참조와 LoggerModule이
+// 실제로 등록한 프로바이더의 토큰이 서로 다른 클래스 객체가 되어 DI가 조용히 깨진다.
+class TraceBootModule {}
+Module({
+  imports: [LoggerModule.forRoot({})],
+  providers: [GrpcTraceAccessLogInterceptor],
+})(TraceBootModule);
+
+(async () => {
+  const app = await NestFactory.createApplicationContext(TraceBootModule, { logger: false });
+  const interceptor = app.get(GrpcTraceAccessLogInterceptor);
+  if (!(interceptor instanceof GrpcTraceAccessLogInterceptor)) {
+    throw new Error("GrpcTraceAccessLogInterceptor가 app.get()으로 해결되지 않음");
+  }
+  await app.close();
+  console.log("[smoke-test] GrpcTraceAccessLogInterceptor ↔ logger/nestjs 크로스 엔트리 DI 검증 통과");
+})().catch((err) => {
+  console.error("[smoke-test] GrpcTraceAccessLogInterceptor 부팅 실패:", err);
+  process.exit(1);
+});
+`,
+  );
+  execFileSync("node", ["check-grpc-trace-boot.cjs"], { cwd: consumerDir, stdio: "inherit" });
 } finally {
   rmSync(workDir, { recursive: true, force: true });
 }
