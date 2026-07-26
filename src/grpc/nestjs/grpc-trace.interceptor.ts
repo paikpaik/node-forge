@@ -3,7 +3,7 @@ import type { CallHandler, ExecutionContext, NestInterceptor } from "@nestjs/com
 import type { Metadata } from "@grpc/grpc-js";
 import type { Observable } from "rxjs";
 import { tap, catchError } from "rxjs/operators";
-import { parseTraceparent, runWithRequestContext } from "../../core";
+import { generateTraceId, parseTraceparent, runWithRequestContext } from "../../core";
 import { ForgeLoggerService } from "../../logger/nestjs";
 
 interface GrpcCallLike {
@@ -29,7 +29,7 @@ export class GrpcTraceAccessLogInterceptor implements NestInterceptor {
 
     const rawTraceparent = metadata?.get?.("traceparent")?.[0];
     const parsed = typeof rawTraceparent === "string" ? parseTraceparent(rawTraceparent) : null;
-    const traceId = parsed?.traceId ?? crypto.randomUUID();
+    const traceId = parsed?.traceId ?? generateTraceId();
     const requestId = crypto.randomUUID();
 
     const start = Date.now();

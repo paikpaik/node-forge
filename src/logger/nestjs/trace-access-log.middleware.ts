@@ -1,6 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { NestMiddleware } from "@nestjs/common";
-import { buildTraceparent, parseTraceparent, runWithRequestContext } from "../../core";
+import {
+  buildTraceparent,
+  generateTraceId,
+  parseTraceparent,
+  runWithRequestContext,
+} from "../../core";
 import { ForgeLoggerService } from "./logger.service";
 
 interface MinimalRequest {
@@ -44,7 +49,7 @@ export class TraceAccessLogMiddleware implements NestMiddleware {
     const traceId =
       (rawTraceparent ? parseTraceparent(rawTraceparent)?.traceId : undefined) ??
       firstHeaderValue(req.headers["x-trace-id"]) ??
-      crypto.randomUUID();
+      generateTraceId();
     const requestId = firstHeaderValue(req.headers["x-request-id"]) ?? crypto.randomUUID();
 
     res.setHeader("traceparent", buildTraceparent(traceId));

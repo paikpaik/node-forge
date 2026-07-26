@@ -50,3 +50,14 @@ export function buildTraceparent(traceId: string, spanId?: string, sampled = tru
   const flags = sampled ? "01" : "00";
   return `00-${traceIdHex}-${spanIdHex}-${flags}`;
 }
+
+/**
+ * @description 새 trace를 시작할 때 쓸 traceId를 W3C 규격(32-char lowercase hex, 하이픈 없음)
+ * 그대로 발급한다. `crypto.randomUUID()`(하이픈 포함)를 traceId로 직접 쓰면 이 프로세스
+ * 자신의 로그에는 하이픈 포함 문자열이, `buildTraceparent`로 정규화되어 전파받은 하위
+ * 프로세스의 로그에는 하이픈 없는 문자열이 찍혀 같은 trace인데도 exact-match 검색이 어긋난다
+ * — 발급 시점에 미리 정규화해 이 불일치를 근본적으로 막는다.
+ */
+export function generateTraceId(): string {
+  return randomBytes(16).toString("hex");
+}

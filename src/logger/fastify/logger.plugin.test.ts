@@ -72,9 +72,9 @@ describe("loggerPlugin — onRequest traceId 추출", () => {
     expect(ctx.traceId).toBe("fallback-trace");
   });
 
-  it("traceparent, x-trace-id 둘 다 없으면 UUID를 생성한다", async () => {
+  it("traceparent, x-trace-id 둘 다 없으면 하이픈 없는 32-char hex traceId를 생성한다", async () => {
     const ctx = await runOnRequest({});
-    expect(ctx.traceId).toMatch(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/);
+    expect(ctx.traceId).toMatch(/^[\da-f]{32}$/);
   });
 
   it("x-request-id 헤더가 있으면 requestId로 사용한다", async () => {

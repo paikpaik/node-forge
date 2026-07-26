@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseTraceparent, buildTraceparent } from "./traceparent";
+import { parseTraceparent, buildTraceparent, generateTraceId } from "./traceparent";
 
 describe("parseTraceparent", () => {
   it("유효한 traceparent 헤더를 파싱한다", () => {
@@ -76,5 +76,21 @@ describe("buildTraceparent", () => {
   it("기본 sampled는 true(01)이다", () => {
     const result = buildTraceparent("4bf92f3577b34da6a3ce929d0e0e4736");
     expect(result).toMatch(/-01$/);
+  });
+});
+
+describe("generateTraceId", () => {
+  it("하이픈 없는 32-char lowercase hex를 발급한다", () => {
+    expect(generateTraceId()).toMatch(/^[\da-f]{32}$/);
+  });
+
+  it("호출할 때마다 서로 다른 값을 발급한다", () => {
+    expect(generateTraceId()).not.toBe(generateTraceId());
+  });
+
+  it("발급한 값을 buildTraceparent에 그대로 넣으면 변형 없이 그대로 쓰인다", () => {
+    const traceId = generateTraceId();
+    const traceparent = buildTraceparent(traceId);
+    expect(traceparent).toContain(`-${traceId}-`);
   });
 });

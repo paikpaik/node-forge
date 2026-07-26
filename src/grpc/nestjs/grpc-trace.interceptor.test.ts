@@ -65,7 +65,7 @@ describe("GrpcTraceAccessLogInterceptor", () => {
 
     await lastValueFrom(interceptor.intercept(makeContext(metadata), handler));
 
-    expect(captured?.traceId).toBeDefined();
+    expect(captured?.traceId).toMatch(/^[\da-f]{32}$/);
   });
 
   it("정상 처리 시 grpcMethod/status/durationMs를 담아 ok로 access log를 남긴다", async () => {

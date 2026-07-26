@@ -1,6 +1,6 @@
 {
   "name": "@paikpaik/node-forge",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Common Node.js modules for NestJS and Fastify",
   "license": "MIT",
   "author": "paikpaik",
