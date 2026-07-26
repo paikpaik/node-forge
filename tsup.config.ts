@@ -38,6 +38,7 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   external: [
+    '@grpc/grpc-js',
     '@nestjs/common',
     '@nestjs/core',
     '@nestjs/microservices',
