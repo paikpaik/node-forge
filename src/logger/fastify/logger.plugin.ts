@@ -3,7 +3,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { createLogger } from "../logger";
 import type { ForgeLogger } from "../logger";
 import type { LoggerOptions } from "../logger.options";
-import { parseTraceparent } from "../../core";
+import { parseTraceparent, generateTraceId } from "../../core";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -32,7 +32,7 @@ const loggerPlugin: FastifyPluginAsync<LoggerOptions> = async (fastify, options)
     const traceId =
       (rawTraceparent ? parseTraceparent(rawTraceparent)?.traceId : undefined) ??
       (request.headers["x-trace-id"] as string | undefined) ??
-      crypto.randomUUID();
+      generateTraceId();
     const requestId =
       (request.headers["x-request-id"] as string | undefined) ?? crypto.randomUUID();
     request.forgeLogger = logger.withContext({ traceId, requestId, ip: request.ip });

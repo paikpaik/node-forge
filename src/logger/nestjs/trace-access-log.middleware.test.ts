@@ -60,7 +60,7 @@ describe("TraceAccessLogMiddleware", () => {
       captured = getRequestContext();
     });
 
-    expect(captured?.traceId).toBeDefined();
+    expect(captured?.traceId).toMatch(/^[\da-f]{32}$/);
     expect(captured?.requestId).toBeDefined();
   });
 
