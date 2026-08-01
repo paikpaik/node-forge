@@ -54,6 +54,8 @@ const healthNestjs = require("@paikpaik/node-forge/health/nestjs");
 const authNestjs = require("@paikpaik/node-forge/auth/nestjs");
 const grpcNestjs = require("@paikpaik/node-forge/grpc/nestjs");
 const loggerNestjs = require("@paikpaik/node-forge/logger/nestjs");
+const events = require("@paikpaik/node-forge/events");
+const eventsNestjs = require("@paikpaik/node-forge/events/nestjs");
 assert.ok(core.ForgeBizError, "core: require()로 ForgeBizError 로드 실패");
 assert.ok(core.runWithRequestContext, "core: require()로 runWithRequestContext 로드 실패");
 assert.ok(responseNestjs.ForgeExceptionFilter, "response/nestjs: require()로 ForgeExceptionFilter 로드 실패");
@@ -64,6 +66,8 @@ assert.ok(grpcNestjs.createGrpcClientOptions, "grpc/nestjs: require()로 createG
 assert.ok(grpcNestjs.buildOutgoingTraceMetadata, "grpc/nestjs: require()로 buildOutgoingTraceMetadata 로드 실패");
 assert.ok(grpcNestjs.GrpcTraceAccessLogInterceptor, "grpc/nestjs: require()로 GrpcTraceAccessLogInterceptor 로드 실패");
 assert.ok(loggerNestjs.TraceAccessLogMiddleware, "logger/nestjs: require()로 TraceAccessLogMiddleware 로드 실패");
+assert.ok(events.AdminEventBus, "events: require()로 AdminEventBus 로드 실패");
+assert.ok(eventsNestjs.AdminEventsModule, "events/nestjs: require()로 AdminEventsModule 로드 실패");
 
 const err = new core.ForgeBizError("E9409", "smoke");
 const catchTargets = Reflect.getMetadata("__filterCatchExceptions__", responseNestjs.ForgeExceptionFilter);
@@ -154,6 +158,54 @@ Module({
 `,
   );
   execFileSync("node", ["check-grpc-trace-boot.cjs"], { cwd: consumerDir, stdio: "inherit" });
+
+  writeFileSync(
+    join(consumerDir, "check-admin-events-sse.cjs"),
+    `
+require("reflect-metadata");
+const assert = require("node:assert/strict");
+const { PATH_METADATA, SSE_METADATA, SELF_DECLARED_DEPS_METADATA } = require("@nestjs/common/constants");
+const { AdminEventsModule, ADMIN_EVENT_BUS } = require("@paikpaik/node-forge/events/nestjs");
+
+// AdminEventsModule.forRoot()는 @Controller(path)를 클래스 선언이 아니라 함수 호출로
+// 동적으로 적용한다 — 이 레포에서 처음 쓰는 패턴이라, esbuild(tsup)가 실제 dist에서도
+// 데코레이터 메타데이터(경로/SSE/주입 토큰)를 정상적으로 남기는지 직접 확인한다.
+const dynamicModule = AdminEventsModule.forRoot({ path: "admin/logs" });
+const [Controller] = dynamicModule.controllers;
+
+assert.equal(
+  Reflect.getMetadata(PATH_METADATA, Controller),
+  "admin/logs",
+  "동적으로 생성한 컨트롤러에 @Controller(path) 경로 메타데이터가 없음",
+);
+assert.equal(
+  Reflect.getMetadata(SSE_METADATA, Controller.prototype.stream),
+  true,
+  "stream() 메서드에 @Sse() 메타데이터가 없음",
+);
+
+const selfDeps = Reflect.getMetadata(SELF_DECLARED_DEPS_METADATA, Controller) ?? [];
+assert.ok(
+  selfDeps.some((dep) => dep.index === 0 && dep.param === ADMIN_EVENT_BUS),
+  "동적 컨트롤러 생성자의 0번 파라미터에 @Inject(ADMIN_EVENT_BUS) 메타데이터가 없음 (dist에서 DI 실패 재현)",
+);
+
+// 실제 스트리밍 동작(멀티캐스트)까지 dist 코드로 직접 확인한다.
+const bus = dynamicModule.providers[0].useValue;
+const controller = new Controller(bus);
+const receivedA = [];
+const receivedB = [];
+controller.stream().subscribe((event) => receivedA.push(event));
+controller.stream().subscribe((event) => receivedB.push(event));
+bus.emit({ type: "created" });
+
+assert.deepEqual(receivedA, [{ data: { type: "created" } }]);
+assert.deepEqual(receivedB, [{ data: { type: "created" } }]);
+
+console.log("[smoke-test] AdminEventsModule 동적 컨트롤러 메타데이터 + SSE 멀티캐스트 검증 통과");
+`,
+  );
+  execFileSync("node", ["check-admin-events-sse.cjs"], { cwd: consumerDir, stdio: "inherit" });
 } finally {
   rmSync(workDir, { recursive: true, force: true });
 }

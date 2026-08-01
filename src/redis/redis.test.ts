@@ -8,6 +8,7 @@ const mockClient = {
   set: vi.fn(),
   setex: vi.fn(),
   del: vi.fn(),
+  unlink: vi.fn(),
   exists: vi.fn(),
   expire: vi.fn(),
   ttl: vi.fn(),
@@ -56,6 +57,9 @@ const mockClient = {
   eval: vi.fn(),
   scan: vi.fn(),
   persist: vi.fn(),
+  multi: vi.fn(),
+  watch: vi.fn(),
+  unwatch: vi.fn(),
 };
 
 vi.mock("ioredis", () => {
@@ -147,11 +151,42 @@ describe("ForgeRedisClient", () => {
     });
   });
 
+  describe("setnx", () => {
+    it("키가 없으면 저장하고 true를 반환한다", async () => {
+      mockClient.set.mockResolvedValue("OK");
+      expect(await client.setnx("key", { value: 1 })).toBe(true);
+      expect(mockClient.set).toHaveBeenCalledWith(
+        "key",
+        expect.stringContaining('"data":{"value":1}'),
+        "NX",
+      );
+    });
+
+    it("이미 키가 있으면 저장하지 않고 false를 반환한다", async () => {
+      mockClient.set.mockResolvedValue(null);
+      expect(await client.setnx("key", "hello")).toBe(false);
+    });
+
+    it("expireSeconds를 지정하면 EX와 함께 SET NX를 호출한다", async () => {
+      mockClient.set.mockResolvedValue("OK");
+      await client.setnx("key", "hello", 60);
+      expect(mockClient.set).toHaveBeenCalledWith("key", expect.any(String), "EX", 60, "NX");
+    });
+  });
+
   describe("del", () => {
     it("키를 삭제하고 삭제 수를 반환한다", async () => {
       mockClient.del.mockResolvedValue(2);
       expect(await client.del("a", "b")).toBe(2);
       expect(mockClient.del).toHaveBeenCalledWith("a", "b");
+    });
+  });
+
+  describe("unlink", () => {
+    it("키를 비동기로 삭제하고 삭제 수를 반환한다", async () => {
+      mockClient.unlink.mockResolvedValue(2);
+      expect(await client.unlink("a", "b")).toBe(2);
+      expect(mockClient.unlink).toHaveBeenCalledWith("a", "b");
     });
   });
 
@@ -571,6 +606,79 @@ describe("ForgeRedisClient", () => {
         client.withLock("job:run", 30, async () => "ok", { retries: 2, retryDelay: 0 }),
       ).rejects.toMatchObject({ code: "E9501" });
       expect(mockClient.set).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  // ── 트랜잭션 ──────────────────────────────────────────────────────────────
+
+  describe("transaction", () => {
+    it("watchKeys 없이 MULTI/EXEC로 명령을 큐잉해 원자적으로 실행한다", async () => {
+      const mockMulti = {
+        set: vi.fn().mockReturnThis(),
+        incr: vi.fn().mockReturnThis(),
+        exec: vi.fn().mockResolvedValue([
+          [null, "OK"],
+          [null, 5],
+        ]),
+      };
+      mockClient.multi.mockReturnValue(mockMulti);
+
+      const results = await client.transaction((multi) => {
+        multi.set("a", "1");
+        multi.incr("b");
+      });
+
+      expect(mockClient.watch).not.toHaveBeenCalled();
+      expect(mockMulti.set).toHaveBeenCalledWith("a", "1");
+      expect(mockMulti.incr).toHaveBeenCalledWith("b");
+      expect(results).toEqual(["OK", 5]);
+    });
+
+    it("watchKeys를 지정하면 WATCH 후 MULTI/EXEC를 실행한다", async () => {
+      const mockMulti = { get: vi.fn().mockReturnThis(), exec: vi.fn().mockResolvedValue([[null, "v"]]) };
+      mockClient.multi.mockReturnValue(mockMulti);
+      mockClient.watch.mockResolvedValue("OK");
+
+      const results = await client.transaction((multi) => multi.get("key"), ["key"]);
+
+      expect(mockClient.watch).toHaveBeenCalledWith("key");
+      expect(results).toEqual(["v"]);
+    });
+
+    it("watch 대상 키가 변경되어 EXEC가 취소되면 null을 반환한다", async () => {
+      const mockMulti = { set: vi.fn().mockReturnThis(), exec: vi.fn().mockResolvedValue(null) };
+      mockClient.multi.mockReturnValue(mockMulti);
+
+      const results = await client.transaction((multi) => multi.set("key", "1"), ["key"]);
+
+      expect(results).toBeNull();
+    });
+
+    it("개별 명령이 실패하면 해당 에러를 throw한다", async () => {
+      const commandError = new Error("WRONGTYPE");
+      const mockMulti = {
+        incr: vi.fn().mockReturnThis(),
+        exec: vi.fn().mockResolvedValue([[commandError, null]]),
+      };
+      mockClient.multi.mockReturnValue(mockMulti);
+
+      await expect(client.transaction((multi) => multi.incr("not-a-number"))).rejects.toThrow(
+        "WRONGTYPE",
+      );
+    });
+
+    it("builder가 던진 에러로 실패하면 watch를 해제하고 에러를 전파한다", async () => {
+      const mockMulti = { exec: vi.fn() };
+      mockClient.multi.mockReturnValue(mockMulti);
+      mockClient.watch.mockResolvedValue("OK");
+
+      await expect(
+        client.transaction(() => {
+          throw new Error("builder boom");
+        }, ["key"]),
+      ).rejects.toThrow("builder boom");
+
+      expect(mockClient.unwatch).toHaveBeenCalled();
     });
   });
 
