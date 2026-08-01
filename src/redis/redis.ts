@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import Redis from "ioredis";
+import type { ChainableCommander } from "ioredis";
 import { ForgeError } from "../core/errors";
 import { sleep } from "../core/async";
 import type { CacheObserver, RedisOptions } from "./redis.options";
@@ -113,11 +114,36 @@ export class ForgeRedisClient {
   }
 
   /**
+   * @description 키가 존재하지 않을 때만 값을 저장한다(Redis SET NX). 이미 값이 있으면 아무것도
+   * 바꾸지 않고 false를 반환한다 — "최초 1회만 기본값 세팅", 멱등성 마커 등 TTL을 강제하지 않는
+   * 단순 SETNX가 필요할 때 사용한다(TTL까지 강제하는 상호 배제에는 lock()을 사용). set()과
+   * 동일하게 { cachedAt, data } 포맷으로 직렬화해 저장하므로 get()으로 그대로 읽을 수 있다.
+   */
+  async setnx(key: string, value: unknown, expireSeconds?: number): Promise<boolean> {
+    const serialized = this.serialize(value);
+    const result =
+      expireSeconds !== undefined && expireSeconds > 0
+        ? await this.client.set(key, serialized, "EX", expireSeconds, "NX")
+        : await this.client.set(key, serialized, "NX");
+    return result === "OK";
+  }
+
+  /**
    * @description 하나 이상의 키를 삭제한다. 삭제된 키의 수를 반환한다.
-   * 존재하지 않는 키는 무시한다.
+   * 존재하지 않는 키는 무시한다. DEL은 값 자체(큰 해시/셋/리스트 등)를 메인 스레드에서
+   * 동기적으로 해제하므로, 원소가 아주 많은 키에서는 서버가 그 시간만큼 블로킹된다.
    */
   async del(...keys: string[]): Promise<number> {
     return this.client.del(...keys);
+  }
+
+  /**
+   * @description 하나 이상의 키를 비동기로 삭제한다(Redis UNLINK). DEL과 값 제거 결과는
+   * 동일하지만, 실제 메모리 해제를 별도 백그라운드 스레드로 넘겨 메인 스레드를 블로킹하지
+   * 않는다 — 원소가 아주 많은 해시/셋/리스트/정렬셋 키를 지울 때 DEL 대신 사용한다.
+   */
+  async unlink(...keys: string[]): Promise<number> {
+    return this.client.unlink(...keys);
   }
 
   /**
@@ -335,6 +361,43 @@ export class ForgeRedisClient {
     }
 
     throw new ForgeError("E9501", `Failed to acquire lock: ${key}`);
+  }
+
+  // ── 트랜잭션 ──────────────────────────────────────────────────────────────
+
+  /**
+   * @description 여러 명령을 MULTI/EXEC로 묶어 원자적으로 실행한다. `builder`가 받는
+   * `ChainableCommander`에 명령을 큐잉만 하면(호출부는 개별 명령 결과를 기다리지 않는다),
+   * `exec()` 시점에 Redis가 다른 클라이언트의 명령이 그 사이에 끼어들지 않도록 큐에 쌓인
+   * 명령 전체를 한 번에 실행한다. `watchKeys`를 지정하면 WATCH로 낙관적 잠금(compare-and-swap)을
+   * 걸어, EXEC 전에 그 키들 중 하나라도 다른 클라이언트가 바꾸면 트랜잭션 전체를 취소하고
+   * `null`을 반환한다 — 호출부가 필요하면 최신 값을 다시 읽어 재시도한다. 개별 명령이
+   * 실패하면(예: 타입 불일치) 해당 에러를 그대로 throw한다.
+   */
+  async transaction<T = unknown>(
+    builder: (multi: ChainableCommander) => void,
+    watchKeys?: string[],
+  ): Promise<T[] | null> {
+    if (watchKeys && watchKeys.length > 0) {
+      await this.client.watch(...watchKeys);
+    }
+
+    try {
+      const multi = this.client.multi();
+      builder(multi);
+      const results = await multi.exec();
+      if (results === null) return null;
+
+      return results.map(([err, value]) => {
+        if (err) throw err;
+        return value as T;
+      });
+    } catch (err) {
+      if (watchKeys && watchKeys.length > 0) {
+        await this.client.unwatch();
+      }
+      throw err;
+    }
   }
 
   // ── Rate Limiter ────────────────────────────────────────────────────────────
