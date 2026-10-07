@@ -16,6 +16,16 @@ GitHub Packages에 배포되어 있으므로, `@paikpaik` 스코프를 GitHub Pa
 npm install @paikpaik/node-forge
 ```
 
+### 지원 버전
+
+| 대상 | 지원 범위 |
+|------|-----------|
+| Node.js | 18 이상 |
+| NestJS (`@nestjs/common` / `core` / `microservices`) | 10.x, 11.x, 12.x |
+| Fastify | 4.x, 5.x |
+
+> **NestJS 12를 CommonJS(`require`)로 사용할 때**: NestJS 12는 ESM 전용 패키지라, node-forge의 CJS 빌드가 Node의 `require(esm)` 기능에 의존합니다. 이 기능을 지원하는 **Node 20.19+ / 22.12+** 가 필요하며(Node 18, 20.19 미만에서는 `ERR_REQUIRE_ESM`), 실행 시 `ExperimentalWarning`이 출력될 수 있습니다. ESM(`import`)으로 사용할 때는 해당되지 않습니다.
+
 ## 모듈
 
 각 모듈은 3개의 export path를 가집니다.
@@ -84,7 +94,7 @@ npm run format    # prettier src/
 
 ## 퍼블리시
 
-`v*` 형태의 태그를 push하면 GitHub Actions가 테스트 → 빌드 → GitHub Packages 배포를 자동으로 수행합니다.
+`v*` 형태의 태그를 push하면 GitHub Actions가 테스트 → 빌드 + 스모크 테스트(NestJS 10/11/12 매트릭스) → GitHub Packages 배포를 자동으로 수행합니다. 스모크 테스트는 로컬에서도 `NEST_MAJOR=12 npm run smoke`처럼 메이저를 지정해 돌릴 수 있습니다(기본값 10, 사전에 `npm run build` 필요).
 
 ```bash
 git tag v1.0.3

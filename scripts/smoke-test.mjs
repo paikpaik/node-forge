@@ -10,6 +10,15 @@ import { join } from "node:path";
  * 클래스 중복)는 잡지 못한다 — 두 번 실제로 겪은 문제라 배포 전 CI 게이트로 둔다.
  */
 const root = process.cwd();
+
+// peer 범위에 선언한 NestJS 메이저마다 실제 설치본으로 검증한다(CI에서 매트릭스로 실행).
+// --legacy-peer-deps 없이 설치하므로, peer 범위가 해당 메이저를 포함하지 않으면 여기서 ERESOLVE로 실패한다.
+const nestMajor = process.env.NEST_MAJOR ?? "10";
+if (!/^\d+$/.test(nestMajor)) {
+  throw new Error(`NEST_MAJOR는 메이저 버전 숫자여야 합니다 (받은 값: "${nestMajor}")`);
+}
+console.log(`[smoke-test] NestJS ^${nestMajor} 기준으로 검증`);
+
 const workDir = mkdtempSync(join(tmpdir(), "node-forge-smoke-"));
 
 try {
@@ -29,9 +38,9 @@ try {
     [
       "install",
       tarballPath,
-      "@nestjs/common@^10",
-      "@nestjs/core@^10",
-      "@nestjs/microservices@^10",
+      `@nestjs/common@^${nestMajor}`,
+      `@nestjs/core@^${nestMajor}`,
+      `@nestjs/microservices@^${nestMajor}`,
       "@grpc/grpc-js@^1.9",
       "rxjs@^7",
       "reflect-metadata@^0.2",
