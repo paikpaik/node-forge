@@ -6,7 +6,55 @@ on:
       - 'v*'
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # peerDependencies의 @nestjs/* 범위와 1:1로 맞춘다 — 메이저를 추가/제거할 때 둘을 함께 수정
+        nest-major: ['10', '11', '12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # NestJS 12는 ESM 패키지라 CJS 빌드가 require(esm)에 의존한다 — 20.x 최신(20.19+)이 필요
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Smoke test (NestJS ^${{ matrix.nest-major }})
+        run: npm run smoke
+        env:
+          NEST_MAJOR: ${{ matrix.nest-major }}
+
   publish:
+    needs: [test, smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,15 +71,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Run tests
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      - name: Smoke test (installed-package require/import + cross-entry instanceof)
-        run: npm run smoke
 
       - name: Publish
         run: npm publish
