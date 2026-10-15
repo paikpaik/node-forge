@@ -2,7 +2,7 @@ import { Catch } from "@nestjs/common";
 import type { ArgumentsHost, ExceptionFilter } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
 import { ForgeBizError, ForgeHttpError } from "../../core/errors";
-import { fail } from "../response";
+import { toErrorReply } from "./all-exceptions.filter";
 
 /**
  * @description `ForgeBizError`/`ForgeHttpError`를 표준 `fail()` 포맷의 HTTP 응답으로 변환하는
@@ -18,7 +18,7 @@ export class ForgeExceptionFilter implements ExceptionFilter {
   catch(exception: ForgeBizError | ForgeHttpError, host: ArgumentsHost): void {
     const { httpAdapter } = this.httpAdapterHost;
     const response = host.switchToHttp().getResponse();
-    const statusCode = exception instanceof ForgeHttpError ? exception.statusCode : 400;
-    httpAdapter.reply(response, fail(exception.code, exception.message), statusCode);
+    const { statusCode, body } = toErrorReply(exception);
+    httpAdapter.reply(response, body, statusCode);
   }
 }

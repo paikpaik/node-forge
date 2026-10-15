@@ -5,7 +5,8 @@ import type { DatabaseOptions } from "../database";
 import { DATABASE_DATA_SOURCE, DATABASE_OPTIONS } from "./database.constants";
 
 export interface DatabaseAsyncOptions extends Pick<ModuleMetadata, "imports"> {
-  useFactory: (...args: unknown[]) => DatabaseOptions | Promise<DatabaseOptions>;
+  /** Nest `FactoryProvider`와 같은 시그니처 — `inject` 순서대로 들어오는 인자에 타입을 바로 적을 수 있다 */
+  useFactory: FactoryProvider<DatabaseOptions>["useFactory"];
   inject?: FactoryProvider["inject"];
 }
 

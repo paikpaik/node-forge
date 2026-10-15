@@ -5,7 +5,8 @@ import type { RedisOptions } from "../redis.options";
 import { REDIS_CLIENT, REDIS_OPTIONS } from "./redis.constants";
 
 export interface RedisAsyncOptions extends Pick<ModuleMetadata, "imports"> {
-  useFactory: (...args: unknown[]) => RedisOptions | Promise<RedisOptions>;
+  /** Nest `FactoryProvider`와 같은 시그니처 — `inject` 순서대로 들어오는 인자에 타입을 바로 적을 수 있다 */
+  useFactory: FactoryProvider<RedisOptions>["useFactory"];
   inject?: FactoryProvider["inject"];
 }
 

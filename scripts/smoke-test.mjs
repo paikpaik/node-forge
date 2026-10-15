@@ -44,6 +44,11 @@ try {
       "@grpc/grpc-js@^1.9",
       "rxjs@^7",
       "reflect-metadata@^0.2",
+      // peer 범위의 최신 메이저 — vitest는 devDependencies(typeorm 0.3, fastify-plugin 5)로 돌기 때문에
+      // 새로 넓힌 범위(typeorm 1.x, fastify-plugin 6)는 여기서만 실제 설치본으로 검증된다
+      "typeorm@^1",
+      "fastify@^5",
+      "fastify-plugin@^6",
       "--no-save",
       "--silent",
     ],
@@ -68,6 +73,11 @@ const eventsNestjs = require("@paikpaik/node-forge/events/nestjs");
 assert.ok(core.ForgeBizError, "core: require()로 ForgeBizError 로드 실패");
 assert.ok(core.runWithRequestContext, "core: require()로 runWithRequestContext 로드 실패");
 assert.ok(responseNestjs.ForgeExceptionFilter, "response/nestjs: require()로 ForgeExceptionFilter 로드 실패");
+assert.ok(responseNestjs.ForgeAllExceptionsFilter, "response/nestjs: require()로 ForgeAllExceptionsFilter 로드 실패");
+// ForgeAllExceptionsFilter는 @Catch() 전체를 잡고 내부에서 instanceof로 분기한다 — core에서 만든 에러가
+// response/nestjs 쪽 클래스와 같은 클래스로 인식돼야 statusCode/code가 유지된다 (엔트리 간 중복 번들링 검출)
+const allReply = responseNestjs.toErrorReply(new core.ForgeHttpError(409, "E9409", "smoke"));
+assert.equal(allReply.statusCode, 409, "ForgeAllExceptionsFilter: core의 ForgeHttpError를 instanceof로 인식하지 못함 (클래스 중복 번들링 의심)");
 assert.ok(healthNestjs.HealthModule, "health/nestjs: require()로 HealthModule 로드 실패");
 assert.ok(authNestjs.JwtAuthGuard, "auth/nestjs: require()로 JwtAuthGuard 로드 실패");
 assert.ok(authNestjs.RolesGuard, "auth/nestjs: require()로 RolesGuard 로드 실패");
@@ -109,6 +119,42 @@ console.log("[smoke-test] import() 서브패스 로딩 검증 통과");
 `,
   );
   execFileSync("node", ["check.mjs"], { cwd: consumerDir, stdio: "inherit" });
+
+  writeFileSync(
+    join(consumerDir, "check-peer-majors.cjs"),
+    `
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const Fastify = require("fastify");
+
+// typeorm 1.x는 exports 맵에 package.json을 열어두지 않아 require("typeorm/package.json")이 안 된다
+const majorOf = (name) => JSON.parse(readFileSync(\`node_modules/\${name}/package.json\`, "utf8")).version.split(".")[0];
+const { DataSource } = require("typeorm");
+const { createDataSource } = require("@paikpaik/node-forge/database");
+const { fastifyHealth } = require("@paikpaik/node-forge/health/fastify");
+
+// typeorm 1.x: node-forge가 쓰는 DataSource API가 그대로 존재하는지
+assert.equal(majorOf("typeorm"), "1", "typeorm 1.x가 설치되지 않음");
+assert.ok(createDataSource, "database: require()로 createDataSource 로드 실패");
+assert.equal(typeof DataSource.prototype.initialize, "function", "typeorm 1.x: DataSource.initialize 없음");
+assert.equal(typeof DataSource.prototype.runMigrations, "function", "typeorm 1.x: DataSource.runMigrations 없음");
+
+// fastify-plugin 6: fp()로 감싼 플러그인이 실제 Fastify 인스턴스에 등록·동작하는지
+(async () => {
+  assert.equal(majorOf("fastify-plugin"), "6", "fastify-plugin 6.x가 설치되지 않음");
+  const app = Fastify();
+  await app.register(fastifyHealth, { checkers: { ok: async () => {} } });
+  const res = await app.inject({ method: "GET", url: "/health" });
+  assert.equal(res.statusCode, 200, "fastify-plugin 6: fastifyHealth 등록 후 /health 응답 실패");
+  await app.close();
+  console.log("[smoke-test] typeorm 1.x / fastify-plugin 6 peer 최신 메이저 검증 통과");
+})().catch((err) => {
+  console.error("[smoke-test] peer 최신 메이저 검증 실패:", err);
+  process.exit(1);
+});
+`,
+  );
+  execFileSync("node", ["check-peer-majors.cjs"], { cwd: consumerDir, stdio: "inherit" });
 
   writeFileSync(
     join(consumerDir, "check-events-boot.cjs"),

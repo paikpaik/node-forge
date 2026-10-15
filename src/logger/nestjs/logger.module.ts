@@ -5,7 +5,8 @@ import { LOGGER_OPTIONS } from "./logger.constants";
 import type { LoggerOptions } from "../logger.options";
 
 export interface LoggerAsyncOptions extends Pick<ModuleMetadata, "imports"> {
-  useFactory: (...args: unknown[]) => LoggerOptions | Promise<LoggerOptions>;
+  /** Nest `FactoryProvider`와 같은 시그니처 — `inject` 순서대로 들어오는 인자에 타입을 바로 적을 수 있다 */
+  useFactory: FactoryProvider<LoggerOptions>["useFactory"];
   inject?: FactoryProvider["inject"];
 }
 

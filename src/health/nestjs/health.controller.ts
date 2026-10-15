@@ -1,4 +1,4 @@
-import { Controller, Get, HttpException, HttpStatus, Inject, Optional } from "@nestjs/common";
+import { Controller, Get, Inject, Optional, ServiceUnavailableException } from "@nestjs/common";
 import { checkHealth } from "../health";
 import type { HealthChecker, HealthReport } from "../health";
 import { HEALTH_CHECKERS, HEALTH_CACHE_MS } from "./health.constants";
@@ -20,7 +20,9 @@ export class HealthController {
     const report = await checkHealth(this.checkers, { cacheMs: this.cacheMs });
 
     if (report.status === "error") {
-      throw new HttpException(report, HttpStatus.SERVICE_UNAVAILABLE);
+      // 본문은 report 그대로(Nest 기본 포맷 응답 불변), ForgeAllExceptionsFilter에서는
+      // 메시지가 "Service Unavailable Exception"이 되고 report는 서버 로그(warn)에 남는다
+      throw new ServiceUnavailableException(report);
     }
 
     return report;
