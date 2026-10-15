@@ -49,6 +49,8 @@ try {
       "typeorm@^1",
       "fastify@^5",
       "fastify-plugin@^6",
+      // RedisModule 종료 검증(check-redis-shutdown.cjs)에 필요
+      "ioredis@^5",
       "--no-save",
       "--silent",
     ],
@@ -261,6 +263,55 @@ console.log("[smoke-test] AdminEventsModule 동적 컨트롤러 메타데이터 
 `,
   );
   execFileSync("node", ["check-admin-events-sse.cjs"], { cwd: consumerDir, stdio: "inherit" });
+
+  writeFileSync(
+    join(consumerDir, "check-redis-shutdown.cjs"),
+    `
+require("reflect-metadata");
+const net = require("node:net");
+const { Module } = require("@nestjs/common");
+const { NestFactory } = require("@nestjs/core");
+const { RedisModule, REDIS_CLIENT } = require("@paikpaik/node-forge/redis/nestjs");
+
+// CI에는 Redis가 없으므로 최소한의 가짜 Redis(ioredis 준비 확인용 INFO와 PING에만 응답)를 띄운다.
+// ForgeRedisClient는 lazyConnect라 명령을 보내야 실제 연결이 맺어진다 — 연결이 없으면 이 버그는 드러나지 않는다.
+const server = net.createServer((socket) => {
+  socket.on("data", (chunk) => {
+    for (const [, command] of chunk.toString().matchAll(/\\*\\d+\\r\\n\\$\\d+\\r\\n([A-Za-z]+)/g)) {
+      const name = command.toUpperCase();
+      if (name === "INFO") {
+        const body = "# Server\\r\\nredis_version:7.4.0\\r\\nloading:0\\r\\n";
+        socket.write("$" + Buffer.byteLength(body) + "\\r\\n" + body + "\\r\\n");
+      } else if (name === "PING") {
+        socket.write("+PONG\\r\\n");
+      } else {
+        socket.write("+OK\\r\\n");
+      }
+    }
+  });
+});
+
+server.listen(0, "127.0.0.1", async () => {
+  try {
+    class ShutdownModule {}
+    Module({ imports: [RedisModule.forRoot({ host: "127.0.0.1", port: server.address().port })] })(ShutdownModule);
+    const app = await NestFactory.createApplicationContext(ShutdownModule, { logger: false });
+    if (!(await app.get(REDIS_CLIENT).ping())) {
+      throw new Error("가짜 Redis에 PING 실패");
+    }
+    await app.close();
+    // 새 연결만 막는다. app.close()가 클라이언트 연결을 닫지 않으면(1.2.0까지의 버그) 서버 쪽 소켓이 남아
+    // 이 프로세스가 끝나지 않고, 아래 execFileSync의 timeout에 걸려 실패한다.
+    server.close();
+    console.log("[smoke-test] RedisModule 앱 종료 시 연결 해제 → 프로세스 정상 종료 검증 통과");
+  } catch (err) {
+    console.error("[smoke-test] RedisModule 종료 검증 실패:", err);
+    process.exit(1);
+  }
+});
+`,
+  );
+  execFileSync("node", ["check-redis-shutdown.cjs"], { cwd: consumerDir, stdio: "inherit", timeout: 20_000 });
 } finally {
   rmSync(workDir, { recursive: true, force: true });
 }

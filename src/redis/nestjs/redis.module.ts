@@ -1,5 +1,10 @@
-import { Module, Global } from "@nestjs/common";
-import type { DynamicModule, FactoryProvider, ModuleMetadata } from "@nestjs/common";
+import { Module, Global, Inject } from "@nestjs/common";
+import type {
+  DynamicModule,
+  FactoryProvider,
+  ModuleMetadata,
+  OnApplicationShutdown,
+} from "@nestjs/common";
 import { ForgeRedisClient } from "../redis";
 import type { RedisOptions } from "../redis.options";
 import { REDIS_CLIENT, REDIS_OPTIONS } from "./redis.constants";
@@ -10,9 +15,25 @@ export interface RedisAsyncOptions extends Pick<ModuleMetadata, "imports"> {
   inject?: FactoryProvider["inject"];
 }
 
+/**
+ * @description `ForgeRedisClient`를 `REDIS_CLIENT` 토큰으로 전역 등록하는 동적 모듈.
+ * 앱이 종료될 때(`app.close()`, 종료 신호 + `enableShutdownHooks()`) 연결을 닫는다 —
+ * 닫지 않으면 ioredis 연결이 이벤트 루프를 붙잡아 프로세스가 끝나지 않는다
+ * (Fastify 플러그인의 `onClose`와 같은 라이프사이클).
+ */
 @Global()
 @Module({})
-export class RedisModule {
+export class RedisModule implements OnApplicationShutdown {
+  // esbuild(tsup)는 design:paramtypes를 방출하지 않으므로 주입 토큰을 명시한다
+  constructor(@Inject(REDIS_CLIENT) private readonly client: ForgeRedisClient) {}
+
+  /**
+   * @description HTTP 서버가 닫힌 뒤(진행 중인 요청이 끝난 뒤) 호출되므로, 남은 명령 없이 연결을 닫을 수 있다.
+   */
+  async onApplicationShutdown(): Promise<void> {
+    await this.client.disconnect();
+  }
+
   static forRoot(options: RedisOptions = {}): DynamicModule {
     return {
       module: RedisModule,
