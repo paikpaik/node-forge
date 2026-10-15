@@ -5,7 +5,8 @@ import type { HttpOptions } from "../http.options";
 import { HTTP_CLIENT, HTTP_OPTIONS } from "./http.constants";
 
 export interface HttpAsyncOptions extends Pick<ModuleMetadata, "imports"> {
-  useFactory: (...args: unknown[]) => HttpOptions | Promise<HttpOptions>;
+  /** Nest `FactoryProvider`와 같은 시그니처 — `inject` 순서대로 들어오는 인자에 타입을 바로 적을 수 있다 */
+  useFactory: FactoryProvider<HttpOptions>["useFactory"];
   inject?: FactoryProvider["inject"];
 }
 

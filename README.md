@@ -22,7 +22,8 @@ npm install @paikpaik/node-forge
 |------|-----------|
 | Node.js | 18 이상 |
 | NestJS (`@nestjs/common` / `core` / `microservices`) | 10.x, 11.x, 12.x |
-| Fastify | 4.x, 5.x |
+| Fastify | 4.x, 5.x (`fastify-plugin` 4.x, 5.x, 6.x) |
+| TypeORM | 0.3.x, 1.x |
 
 > **NestJS 12를 CommonJS(`require`)로 사용할 때**: NestJS 12는 ESM 전용 패키지라, node-forge의 CJS 빌드가 Node의 `require(esm)` 기능에 의존합니다. 이 기능을 지원하는 **Node 20.19+ / 22.12+** 가 필요하며(Node 18, 20.19 미만에서는 `ERR_REQUIRE_ESM`), 실행 시 `ExperimentalWarning`이 출력될 수 있습니다. ESM(`import`)으로 사용할 때는 해당되지 않습니다.
 
@@ -74,6 +75,28 @@ export class AppModule {}
 import { fastifyRedis } from '@paikpaik/node-forge/redis/fastify'
 
 fastify.register(fastifyRedis, { host: 'localhost', port: 6379 })
+```
+
+```ts
+// NestJS — 다른 모듈의 값으로 구성할 때 (forRootAsync)
+// useFactory는 Nest FactoryProvider와 같은 시그니처라 inject 순서대로 인자 타입을 바로 적을 수 있다
+RedisModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({ host: config.get('REDIS_HOST'), port: config.get('REDIS_PORT') }),
+})
+```
+
+```ts
+// NestJS — 응답 포맷 통일
+// 성공: { success: true, data } / 실패: { success: false, error: { code, message } }
+app.useGlobalInterceptors(new ResponseInterceptor())
+
+// Forge 에러(ForgeHttpError/ForgeBizError)만 표준 포맷으로 바꾸고, 나머지는 Nest 기본 포맷으로 둘 때
+app.useGlobalFilters(new ForgeExceptionFilter(app.get(HttpAdapterHost)))
+
+// 모든 예외를 표준 포맷으로 바꿀 때 (없는 경로 404 → E9404, ValidationPipe 400 → E9400,
+// 예상하지 못한 예외 → 500 E9500 + 서버 로그) — 위 둘 중 하나만 등록한다
+app.useGlobalFilters(new ForgeAllExceptionsFilter(app.get(HttpAdapterHost)))
 ```
 
 ## 개발

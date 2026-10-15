@@ -11,9 +11,8 @@ export interface HealthModuleOptions {
 }
 
 export interface HealthAsyncOptions extends Pick<ModuleMetadata, "imports"> {
-  useFactory: (
-    ...args: unknown[]
-  ) => Record<string, HealthChecker> | Promise<Record<string, HealthChecker>>;
+  /** Nest `FactoryProvider`와 같은 시그니처 — `inject` 순서대로 들어오는 인자에 타입을 바로 적을 수 있다 */
+  useFactory: FactoryProvider<Record<string, HealthChecker>>["useFactory"];
   inject?: FactoryProvider["inject"];
   /** 이 시간(ms) 안의 반복 요청은 체커를 다시 실행하지 않고 마지막 결과를 재사용한다. 생략하면 캐싱 없음(기존 동작). */
   cacheMs?: number;
